@@ -1,0 +1,59 @@
+{
+  "_hinweis": "Programme, die ohne Rueckfrage laufen duerfen. Alles andere landet im Freigabe-Dialog. Befehle werden OHNE Shell ausgefuehrt: keine Pipes, keine Umleitungen, keine Verkettung.",
+
+  "allowed": {
+    "grep": { "forbidFlags": ["-S", "--devices", "-Z", "--null"] },
+    "rg":   { "forbidFlags": ["--follow", "-L", "--pre", "--hostname-bin"] },
+    "find": { "forbidFlags": ["-exec", "-execdir", "-ok", "-okdir", "-delete", "-fls", "-fprint", "-fprintf", "-L", "-follow"] },
+    "ls":   { "forbidFlags": [] },
+    "cat":  { "forbidFlags": [] },
+    "head": { "forbidFlags": [] },
+    "tail": { "forbidFlags": ["-f", "--follow"] },
+    "wc":   { "forbidFlags": [] },
+    "file": { "forbidFlags": [] },
+    "stat": { "forbidFlags": [] }
+  },
+
+  "_warum_kein_git": "git steht bewusst NICHT hier. Nicht wegen Netzwerkzugriff (status/diff/log koennen das nicht), sondern weil die repo-eigene .git/config ueber diff.external, core.pager und textconv-Filter beliebige Programme startet - ohne jedes Netzwerk. Das Sperren von -c hilft nicht, weil die Konfiguration nicht von der Kommandozeile kommt. git-Befehle laufen weiterhin, aber ueber den Freigabe-Dialog. Siehe docs/security-projects/git-security-feature.md",
+
+  "_hinweis_redirects": "Programme, fuer die es ein sichereres, eingegrenztes Werkzeug gibt. Statt den Nutzer bei jedem Backup nach 'cp' zu fragen, bekommt das Modell direkt den Hinweis auf copy_file zurueck - ohne Ausfuehrung, ohne Dialog. copy_file kopiert einzelne Dateien: Quelle aus dem Lesebereich, Ziel in den Schreibbereich.",
+  "redirects": {
+    "cp": "Benutze das Werkzeug copy_file(source, dest) statt cp - es kopiert ohne Rueckfrage: Quelle aus dem Lesebereich, Ziel in den Schreibbereich. cp wird dafuer nicht ausgefuehrt."
+  },
+
+  "_hinweis_phpLint": "Enge Ausnahme fuer den ausfuehrungsfreien Syntax-Check 'php -l <datei>'. Bedingung: Programm 'php' OHNE Pfadangabe, das EINZIGE Flag ist '-l', mindestens ein Pfadargument. Jedes andere Flag (-r, -f, -a, -d, -c ...) verhindert die Freigabe, weil es Code ausfuehren koennte. Der Zielpfad wird weiterhin gegen den Lesebereich geprueft. So laeuft der Lint ohne Rueckfrage, ohne dass php als Interpreter freigegeben ist.",
+  "phpLint": {
+    "program": "php",
+    "onlyFlag": "-l",
+    "requirePathArg": true
+  },
+
+  "_hinweis_sed": "sed steht bewusst NICHT auf der Allowlist: sed -i schreibt Dateien und GNU-sed fuehrt ueber das e-Kommando bzw. s///e beliebige Shell-Befehle aus - beides steckt im Skript-Argument, das forbidFlags nicht filtern kann. Ausnahme: Die nachweislich lese-only Form 'sed -n START,ENDp <datei>' (auch 'Np' und 'START,$p') wird NICHT als Prozess gestartet, sondern intern als Zeilen-Read behandelt (kind=sedread) und liefert byte-gleich dasselbe wie sed. Diese Logik sitzt fest im Guard-Code (erkenneSedLesebereich in src/guards/commandGuard.ts), nicht in dieser Datei. Jeder andere sed-Aufruf landet im Freigabe-Dialog.",
+
+  "_hinweis_allowedCommands": "Vollstaendige Befehle, die OHNE Rueckfrage laufen duerfen, stehen NICHT hier, sondern in ~/.leaven/allowed-commands.json - einem Ort, den der AI-Assistent weder lesen noch schreiben kann (secretDirectories). Nur der Mensch pflegt diese Liste. Der Abgleich ist EXAKT (Programm + alle Argumente); angehaengte Flags gehen nicht mit durch. Beispiel-Inhalt: [\"php artisan view:clear\", \"php artisan view:cache\", \"php artisan julalo\"].",
+
+  "secretPatterns": [
+    ".env",
+    ".env.*",
+    "*.pem",
+    "*.key",
+    "id_rsa*",
+    "id_ed25519*",
+    "id_ecdsa*",
+    ".npmrc",
+    ".netrc",
+    ".pgpass",
+    "*.p12",
+    "*.pfx",
+    "*.keystore",
+    "*credentials*",
+    "*.kdbx"
+  ],
+
+  "_hinweis_apiEndpoint": "Das EINZIGE Ziel, an das post_to_endpoint senden darf - die eigene leaven-cli-Webinstanz. Das Modell kann die Ziel-URL NICHT angeben, sie kommt ausschliesslich von hier bzw. aus LEAVEN_API_ENDPOINT. Waere die URL ein Werkzeug-Parameter, koennte der Agent beliebige Daten an beliebige Server schicken. null = kein Senden moeglich.",
+  "apiEndpoint": null,
+
+  "_warum_leaven_gesperrt": "~/.leaven enthaelt die Rollen-Konfigurationen. Ohne diese Sperre koennte eine Rolle die Bereiche und Onboarding-Texte ALLER anderen Rollen lesen, sobald der Lesebereich bis ~ reicht. Einzige Ausnahme: Das Verzeichnis der GERADE AKTIVEN Rolle (~/.leaven/roles/.<name>/) ist lesbar - siehe istEigeneRollendatei() in src/index.ts.",
+
+  "secretDirectories": [".ssh", ".aws", ".gnupg", ".config/gcloud", ".leaven"]
+}

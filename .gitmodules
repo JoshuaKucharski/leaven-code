@@ -1,0 +1,3 @@
+[submodule "loop-breaker"]
+	path = loop-breaker
+	url = https://github.com/sakshya73/loop-breaker.git

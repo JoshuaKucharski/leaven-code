@@ -1,0 +1,24 @@
+Zusammenfassung von package.json
+===============================
+
+Projektname:     leaven-cli
+Version:         1.0.0
+Beschreibung:    Ein eigener CLI-Agent für DeepSeek
+Lizenz:          MIT
+
+Haupteinstieg:   dist/index.js
+CLI-Befehl:      leaven
+
+Das Projekt ist ein TypeScript-basiertes Kommandozeilen-Tool. Es wird mit tsc
+zu JavaScript kompiliert (dist/index.js) und kann als globaler Befehl "leaven"
+installiert werden.
+
+Wichtige Abhängigkeiten:
+  - axios      (HTTP-Client)
+  - chalk      (Terminal-Farbausgabe)
+  - commander  (CLI-Framework)
+  - dotenv     (Umgebungsvariablen aus .env-Datei)
+  - ora        (Spinner-Animationen im Terminal)
+
+Entwicklungs-Skripte:
+  - build, dev, start, typecheck, test (plus spezifische Tests)

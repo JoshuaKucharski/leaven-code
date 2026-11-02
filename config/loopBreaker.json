@@ -1,0 +1,12 @@
+{
+  "mode": "kill",
+  "consecutive_threshold": 5,
+  "structural_detection": true,
+  "cycle_reps": 4,
+  "cycle_max_period": 6,
+  "read_only_cycle_exempt": true,
+  "_hinweis_max_tool_calls": "Budget fuer die GESAMTE Sitzung, nicht pro Auftrag. Bei 200 war nach wenigen groesseren Auftraegen Schluss - und der Grund war schwer zu erkennen, weil die Meldung wie eine Schleifenerkennung aussieht.",
+  "max_tool_calls": 9999,
+  "max_estimated_tokens": 0,
+  "ignore_tools": ["list_files"]
+}

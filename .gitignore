@@ -1,0 +1,13 @@
+# Abhängigkeiten und Build (dist/ entsteht per npm install → postinstall → tsc)
+node_modules/
+dist/
+
+# Geheimnisse – echte Schlüssel gehören in die Shell-Umgebung, nie ins Repo
+.env
+.env.*
+!.env.example
+
+# Betriebssystem / Editor
+.DS_Store
+Thumbs.db
+*.log

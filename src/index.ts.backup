@@ -1,0 +1,240 @@
+#!/usr/bin/env node
+
+import { Command } from 'commander';
+import chalk from 'chalk';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import ora from 'ora';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const execAsync = promisify(exec);
+
+interface DeepSeekMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+const program = new Command();
+
+program
+  .name('leaven')
+  .description('Ein eigener CLI-Agent für DeepSeek')
+  .version('1.0.0');
+
+program
+  .command('apply')
+  .description('Wendet eine Änderung auf das Projekt an')
+  .option('--prompt <prompt>', 'Die Anweisung an DeepSeek')
+  .option('--project <path>', 'Pfad zum Projekt', '.')
+  .action(async (options) => {
+    const projectPath = path.resolve(options.project);
+    console.log(chalk.blue(`📁 Arbeite in: ${projectPath}`));
+    
+    // API-Key prüfen
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) {
+      console.error(chalk.red('❌ DEEPSEEK_API_KEY nicht gesetzt!'));
+      console.error(chalk.yellow('💡 Setze: export DEEPSEEK_API_KEY="dein-key"'));
+      process.exit(1);
+    }
+
+    // 1. Startseite finden (Laravel-fokussiert)
+    const spinner = ora('🔍 Suche Startseite...').start();
+    const indexFile = await findLaravelView(projectPath);
+    
+    if (!indexFile) {
+      spinner.fail('❌ Keine Startseite (Blade/HTML) gefunden!');
+      console.log(chalk.yellow('💡 Suche in: resources/views/ oder public/'));
+      process.exit(1);
+    }
+    spinner.succeed(`✅ Startseite gefunden: ${path.relative(projectPath, indexFile)}`);
+
+    // 2. Datei-Inhalt lesen
+    const fileContent = await fs.readFile(indexFile, 'utf-8');
+
+    // 3. Prompt vorbereiten
+    const prompt = options.prompt || "Füge einen roten Banner mit 'Von DeepSeek erstellt! 🎉' auf der Startseite ein.";
+
+    // 4. DeepSeek aufrufen
+    spinner.start('🧠 DeepSeek generiert Änderungen...');
+    const newContent = await callDeepSeek(apiKey, fileContent, prompt, indexFile);
+    spinner.succeed('✅ DeepSeek hat die Änderung generiert');
+
+    // 5. Backup erstellen und anwenden
+    const backupPath = indexFile + '.backup.' + Date.now();
+    await fs.writeFile(backupPath, fileContent);
+    await fs.writeFile(indexFile, newContent);
+    
+    console.log(chalk.green(`✨ Änderung angewendet auf: ${path.relative(projectPath, indexFile)}`));
+    console.log(chalk.gray(`📦 Backup gespeichert: ${path.relative(projectPath, backupPath)}`));
+  });
+
+program
+  .command('chat')
+  .description('Startet einen Chat mit DeepSeek im Terminal')
+  .option('--model <model>', 'Modell', 'deepseek-chat')
+  .action(async (options) => {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) {
+      console.error(chalk.red('❌ DEEPSEEK_API_KEY nicht gesetzt!'));
+      process.exit(1);
+    }
+
+    console.log(chalk.blue(`💬 Chat mit ${options.model}. Type 'exit' zum Beenden.`));
+    
+    const readline = require('readline');
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    const messages: DeepSeekMessage[] = [];
+
+    const askQuestion = () => {
+      rl.question(chalk.green('\nDu: '), async (input: string) => {
+        if (input.toLowerCase() === 'exit') {
+          console.log(chalk.yellow('👋 Auf Wiedersehen!'));
+          rl.close();
+          return;
+        }
+
+        messages.push({ role: 'user', content: input });
+        
+        const spinner = ora('🤔 DeepSeek denkt...').start();
+        try {
+          const response = await callDeepSeekWithHistory(apiKey, messages, options.model);
+          spinner.stop();
+          console.log(chalk.blue(`\nDeepSeek: ${response}`));
+          messages.push({ role: 'assistant', content: response });
+        } catch (error) {
+          spinner.fail('Fehler bei der Anfrage');
+          console.error(chalk.red(error));
+        }
+        
+        askQuestion();
+      });
+    };
+
+    askQuestion();
+  });
+
+// --- Hilfsfunktionen ---
+
+async function findLaravelView(projectPath: string): Promise<string | null> {
+  // Typische Laravel View-Pfade
+  const viewPaths = [
+    'resources/views/welcome.blade.php',
+    'resources/views/home.blade.php',
+    'resources/views/index.blade.php',
+    'resources/views/layouts/app.blade.php',
+    'resources/views/dashboard.blade.php',
+    'resources/views/frontpage.blade.php',
+    'public/index.html',
+    'index.html',
+    'index.php'
+  ];
+  
+  for (const viewPath of viewPaths) {
+    const fullPath = path.join(projectPath, viewPath);
+    try {
+      await fs.access(fullPath);
+      return fullPath;
+    } catch {
+      continue;
+    }
+  }
+  
+  // Falls nichts gefunden, suche rekursiv nach .blade.php Dateien
+  try {
+    const findCmd = `find ${projectPath} -name "*.blade.php" -type f | head -1`;
+    const { stdout } = await execAsync(findCmd);
+    if (stdout.trim()) {
+      return stdout.trim();
+    }
+  } catch {
+    // Ignore
+  }
+  
+  return null;
+}
+
+async function callDeepSeek(apiKey: string, fileContent: string, prompt: string, filePath: string): Promise<string> {
+  const axios = require('axios');
+  
+  const messages: DeepSeekMessage[] = [
+    {
+      role: 'system',
+      content: `Du bist ein Experte für Webentwicklung mit Schwerpunkt auf Laravel/Blade und HTML/CSS.
+Deine Aufgabe: Ändere den Inhalt der Datei so, dass die Anweisung erfüllt wird.
+
+WICHTIG:
+- Gib NUR den geänderten Dateiinhalt zurück
+- KEINE Erklärungen, KEIN Markdown, nur den reinen Code
+- Erhalte die bestehende Struktur der Datei
+- Füge den Banner als erstes Element nach dem <body>-Tag oder am Anfang des Hauptcontainers ein
+- Der Banner soll rot sein (background-color: #ff0000 oder bg-red-600), weiße Schrift, zentriert
+
+Datei: ${path.basename(filePath)}`
+    },
+    {
+      role: 'user',
+      content: `Hier ist der aktuelle Inhalt der Datei:\n\n${fileContent}\n\nFühre folgende Änderung durch: ${prompt}`
+    }
+  ];
+
+  try {
+    const response = await axios.post(
+      'https://api.deepseek.com/v1/chat/completions',
+      {
+        model: 'deepseek-chat',
+        messages: messages,
+        temperature: 0.3,
+        max_tokens: 4000
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    return response.data.choices[0].message.content;
+  } catch (error: any) {
+    console.error(chalk.red('❌ API Fehler:'), error.response?.data?.error?.message || error.message);
+    throw error;
+  }
+}
+
+async function callDeepSeekWithHistory(apiKey: string, messages: DeepSeekMessage[], model: string): Promise<string> {
+  const axios = require('axios');
+  
+  try {
+    const response = await axios.post(
+      'https://api.deepseek.com/v1/chat/completions',
+      {
+        model: model,
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 2000
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    return response.data.choices[0].message.content;
+  } catch (error: any) {
+    console.error(chalk.red('❌ API Fehler:'), error.response?.data?.error?.message || error.message);
+    throw error;
+  }
+}
+
+program.parse();

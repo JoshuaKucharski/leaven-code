@@ -1,0 +1,36 @@
+{
+  "name": "leaven-cli",
+  "version": "1.0.0",
+  "description": "Ein eigener CLI-Agent für DeepSeek",
+  "main": "dist/index.js",
+  "bin": {
+    "leaven": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node tests/test-guard.js && node tests/test-logic.js && node tests/test-url.js",
+    "test:anthropic": "npm run build && node tests/test-anthropic.js",
+    "test:stream": "npm run build && node tests/test-stream.js",
+    "test:usage": "npm run build && node tests/test-usage.js",
+    "test:session": "npm run build && node tests/test-session.js",
+    "postinstall": "npm run build"
+  },
+  "keywords": ["deepseek", "cli", "agent"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "chalk": "^4.1.2",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.7",
+    "ora": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  }
+}
