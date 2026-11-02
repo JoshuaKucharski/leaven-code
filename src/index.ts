@@ -12,7 +12,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { LoopBreaker } from './guards/loopBreaker.js';
 import {
-  checkCommand, isSecretPath, looksLikePath, scrubEnvironment, registryEintragErlaubt, CommandConfig
+  checkCommand, isSecretPath, looksLikePath, eingebetteteWerte, scrubEnvironment, registryEintragErlaubt, CommandConfig
 } from './guards/commandGuard.js';
 import { pruefeUrl, htmlZuText } from './guards/urlGuard.js';
 import { providerFor, capabilitiesFor, ALLE_MODELLE, aufloesenModell } from './providers/capabilities.js';
@@ -942,14 +942,18 @@ async function executeTool(toolCall: any): Promise<string> {
         // sein Zielpfad muss im Lesebereich liegen.
         if (!registriert) {
           for (const arg of verdict.parsed.args) {
-            if (!looksLikePath(arg)) continue;
-            try {
-              await securePath(arg, scope, cwd);
-            } catch (error: any) {
-              const hinweis = scope === 'write'
-                ? ` (${verdict.parsed.program} steht nicht auf der Allowlist – Argumente müssen deshalb im Schreibbereich liegen)`
-                : '';
-              return `❌ Abgelehnt: Argument "${arg}" – ${error.message}${hinweis}`;
+            // Optionen tragen Pfade oft im Wert (--file=/pfad, -f/pfad) – die zählen mit.
+            const kandidaten = looksLikePath(arg) ? [arg] : eingebetteteWerte(arg);
+            for (const kandidat of kandidaten) {
+              try {
+                await securePath(kandidat, scope, cwd);
+              } catch (error: any) {
+                const hinweis = scope === 'write'
+                  ? ` (${verdict.parsed.program} steht nicht auf der Allowlist – Argumente müssen deshalb im Schreibbereich liegen)`
+                  : '';
+                const wo = kandidat === arg ? `"${arg}"` : `"${arg}" (Wert ${kandidat})`;
+                return `❌ Abgelehnt: Argument ${wo} – ${error.message}${hinweis}`;
+              }
             }
           }
         }
@@ -1122,13 +1126,16 @@ async function callApi(messages: any[], withTools: boolean, onReasoning?: (d: st
 
   // Anthropic (Opus/Fable): eigener Adapter, non-streaming (Streaming = Phase 2).
   if (caps.provider === 'anthropic') {
-    const { message, usage } = await callAnthropic(messages, withTools ? aktiveTools() : null, {
+    const { message, usage, finishReason } = await callAnthropic(messages, withTools ? aktiveTools() : null, {
       model: settings.model,
       effort: settings.effort,
       thinking: settings.thinking,
       apiKey: settings.apiKey,
     });
     zaehleTokens('anthropic', usage);
+    // Thinking zählt mit ins max_tokens-Budget: Ohne Hinweis sähe ein abgeschnittener Zug
+    // wie eine fertige, nur knappe Antwort aus.
+    if (finishReason === 'length') console.log(chalk.yellow('⚠️  Antwort wurde wegen des Längenlimits (max_tokens) abgeschnitten.'));
     return message;
   }
 
@@ -2187,7 +2194,7 @@ const BEFEHLE: SlashBefehl[] = [
       settings.effort = neu;
       console.log(chalk.green(`  ✔ Denktiefe: ${neu}`));
       if (capabilitiesFor(settings.model).thinkingToggle && !settings.thinking) {
-        console.log(chalk.gray('    (wirkt erst, wenn Thinking eingeschaltet ist)'));
+        console.log(chalk.gray('    (wirkt erst, wenn Thinking eingeschaltet ist – ohne Thinking sendet der Adapter höchstens "high")'));
       }
     },
   },
@@ -2947,7 +2954,7 @@ program
   .option('-y, --yes', 'Tool-Aufrufe ohne Rückfrage ausführen (nicht-interaktiv)')
   .option('--model <name>', 'Modell überschreiben (Standard: deepseek-v4-pro)')
   .option('--no-thinking', 'Thinking-Modus abschalten (schneller, günstiger)')
-  .option('--effort <stufe>', 'reasoning_effort: high oder max', 'high')
+  .option('--effort <stufe>', 'Denktiefe: DeepSeek high|max, Anthropic low|medium|high|xhigh|max', 'high')
   .option('--read-root <pfad>', 'Lesebereich festlegen (überspringt die Startfrage)')
   .option('--write-root <pfad>', 'Schreibbereich festlegen (überspringt die Startfrage)')
   .option('--verbose', 'Anzeige: Gedankenstrom UND Zwischenschritte an (zur Laufzeit: /output)')

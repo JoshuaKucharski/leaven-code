@@ -8,8 +8,11 @@ import axios from 'axios';
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 const FABLE_BETA = 'server-side-fallback-2026-06-01';
-const MAX_TOKENS = 8192;
-const REQUEST_TIMEOUT_MS = 300_000;   // non-streaming; Thinking kann dauern
+// Thinking-Tokens zählen mit ins max_tokens-Budget. Mit 8192 endete ein langer Denkschritt
+// bei Opus/Fable still per stop_reason max_tokens. 16000 ist der empfohlene Wert für
+// non-streaming Requests; das Zeitlimit wächst mit (lange Antworten dauern länger).
+const MAX_TOKENS = 16000;
+const REQUEST_TIMEOUT_MS = 600_000;   // non-streaming; Thinking kann dauern
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -77,11 +80,16 @@ export function zuAnthropicRequest(messages: any[], tools: any[] | null, opts: A
     }
   }
 
+  // Ohne Thinking akzeptiert die API nur Denktiefen bis "high" (Opus 5: HTTP 400 bei
+  // xhigh/max). Die Denktiefe wirkt ohne Thinking ohnehin nicht – also kappen statt scheitern.
+  const thinkingAktiv = istFable || opts.thinking;
+  const effort = !thinkingAktiv && (opts.effort === 'xhigh' || opts.effort === 'max') ? 'high' : opts.effort;
+
   const body: any = {
     model: opts.model,
     max_tokens: MAX_TOKENS,
     messages: anthroMessages,
-    output_config: { effort: opts.effort },
+    output_config: { effort },
   };
   if (system) body.system = system;
 
@@ -130,9 +138,18 @@ export function ausAnthropicResponse(data: any): any {
   return message;
 }
 
+/** stop_reason -> finish_reason in DeepSeek-Form: max_tokens heisst dort 'length'. So zeigt
+ *  die Agent-Schleife für alle Provider dieselbe Warnung, wenn eine Antwort abgeschnitten ist. */
+export function finishReasonAus(data: any): string | null {
+  const grund = data?.stop_reason;
+  if (!grund) return null;
+  return grund === 'max_tokens' ? 'length' : String(grund);
+}
+
 /** Ruft die Anthropic Messages-API über axios auf (mit Retry wie im DeepSeek-Pfad).
- *  Gibt { message, usage } zurück – usage für die Tages-Token-Zählung. */
-export async function callAnthropic(messages: any[], tools: any[] | null, opts: AnthropicOpts): Promise<{ message: any; usage: any }> {
+ *  Gibt { message, usage, finishReason } zurück – usage für die Tages-Token-Zählung,
+ *  finishReason 'length', wenn max_tokens die Antwort abgeschnitten hat. */
+export async function callAnthropic(messages: any[], tools: any[] | null, opts: AnthropicOpts): Promise<{ message: any; usage: any; finishReason: string | null }> {
   const body = zuAnthropicRequest(messages, tools, opts);
   const headers: any = {
     'x-api-key': opts.apiKey,
@@ -145,7 +162,7 @@ export async function callAnthropic(messages: any[], tools: any[] | null, opts: 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const response = await axios.post(ANTHROPIC_URL, body, { headers, timeout: REQUEST_TIMEOUT_MS });
-      return { message: ausAnthropicResponse(response.data), usage: response.data?.usage };
+      return { message: ausAnthropicResponse(response.data), usage: response.data?.usage, finishReason: finishReasonAus(response.data) };
     } catch (error: any) {
       lastError = error;
       const status = error.response?.status;

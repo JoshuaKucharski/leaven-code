@@ -71,6 +71,18 @@ const history = [
   check('Fable: fallbacks auf Opus', Array.isArray(body.fallbacks) && body.fallbacks[0].model === 'claude-opus-4-8');
 }
 {
+  // Ohne Thinking akzeptiert die API nur bis "high" (Opus 5: 400 bei xhigh/max) -> kappen.
+  const aus = a.zuAnthropicRequest(history, tools, { model: 'claude-opus-5', effort: 'max', thinking: false });
+  check('Opus ohne Thinking: max -> high gekappt', aus.output_config.effort === 'high' && aus.thinking.type === 'disabled');
+  const an = a.zuAnthropicRequest(history, tools, { model: 'claude-opus-5', effort: 'max', thinking: true });
+  check('Opus mit Thinking: max bleibt max', an.output_config.effort === 'max' && an.thinking.type === 'adaptive');
+  const niedrig = a.zuAnthropicRequest(history, tools, { model: 'claude-opus-5', effort: 'low', thinking: false });
+  check('Opus ohne Thinking: low bleibt low', niedrig.output_config.effort === 'low');
+  const fable = a.zuAnthropicRequest(history, tools, { model: 'claude-fable-5', effort: 'max', thinking: false });
+  check('Fable (Thinking immer an): max bleibt max', fable.output_config.effort === 'max');
+  check('max_tokens 16000 (Thinking zählt mit ins Budget)', aus.max_tokens === 16000);
+}
+{
   // _providerRaw wird bevorzugt (erhält thinking-Blöcke unverändert).
   const raw = [{ type: 'thinking', thinking: '…' }, { type: 'text', text: 'hi' }];
   const h = [{ role: 'user', content: 'x' }, { role: 'assistant', content: 'hi', _providerRaw: raw }];
@@ -99,6 +111,12 @@ console.log('\n[3] ausAnthropicResponse: Antwort -> DeepSeek-Form');
   // Fable-Refusal sauber behandeln.
   const msg = a.ausAnthropicResponse({ stop_reason: 'refusal', content: [] });
   check('refusal -> Meldung statt leer', typeof msg.content === 'string' && /refusal|abgelehnt/i.test(msg.content));
+}
+{
+  // max_tokens -> 'length' wie bei DeepSeek/Qwen, damit die Schleife dieselbe Warnung zeigt.
+  check('finishReasonAus: max_tokens -> length', a.finishReasonAus({ stop_reason: 'max_tokens' }) === 'length');
+  check('finishReasonAus: end_turn bleibt', a.finishReasonAus({ stop_reason: 'end_turn' }) === 'end_turn');
+  check('finishReasonAus: ohne stop_reason -> null', a.finishReasonAus({}) === null);
 }
 
 console.log(`\n${'='.repeat(50)}`);

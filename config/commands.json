@@ -2,17 +2,18 @@
   "_hinweis": "Programme, die ohne Rueckfrage laufen duerfen. Alles andere landet im Freigabe-Dialog. Befehle werden OHNE Shell ausgefuehrt: keine Pipes, keine Umleitungen, keine Verkettung.",
 
   "allowed": {
-    "grep": { "forbidFlags": ["-S", "--devices", "-Z", "--null"] },
+    "grep": { "forbidFlags": ["-S", "-R", "--dereference-recursive", "--devices", "-Z", "--null"] },
     "rg":   { "forbidFlags": ["--follow", "-L", "--pre", "--hostname-bin"] },
-    "find": { "forbidFlags": ["-exec", "-execdir", "-ok", "-okdir", "-delete", "-fls", "-fprint", "-fprintf", "-L", "-follow"] },
+    "find": { "forbidFlags": ["-exec", "-execdir", "-ok", "-okdir", "-delete", "-fls", "-fprint", "-fprint0", "-fprintf", "-L", "-follow"] },
     "ls":   { "forbidFlags": [] },
     "cat":  { "forbidFlags": [] },
     "head": { "forbidFlags": [] },
-    "tail": { "forbidFlags": ["-f", "--follow"] },
+    "tail": { "forbidFlags": ["-f", "-F", "--follow"] },
     "wc":   { "forbidFlags": [] },
-    "file": { "forbidFlags": [] },
+    "file": { "forbidFlags": ["-C", "--compile"] },
     "stat": { "forbidFlags": [] }
   },
+  "_hinweis_forbidFlags": "Eine Sperre greift exakt (-S), mit Wert (--follow=name), gebuendelt (-rS enthaelt -S) und als GNU-Abkuerzung (--deref fuer --dereference-recursive). Die Eintraege gelten fuer BSD (macOS) UND GNU (Linux): grep -R folgt unter GNU allen Symlinks (BSD: wie -r), tail -F folgt wie -f, file -C schreibt magic.mgc, find -fprint0 schreibt eine Datei (GNU). Pfade in Optionswerten (--file=/pfad, -f/pfad) prueft execute_command zusaetzlich gegen den Bereich.",
 
   "_warum_kein_git": "git steht bewusst NICHT hier. Nicht wegen Netzwerkzugriff (status/diff/log koennen das nicht), sondern weil die repo-eigene .git/config ueber diff.external, core.pager und textconv-Filter beliebige Programme startet - ohne jedes Netzwerk. Das Sperren von -c hilft nicht, weil die Konfiguration nicht von der Kommandozeile kommt. git-Befehle laufen weiterhin, aber ueber den Freigabe-Dialog. Siehe docs/security-projects/git-security-feature.md",
 

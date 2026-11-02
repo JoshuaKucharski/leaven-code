@@ -115,6 +115,51 @@ export function looksLikePath(arg: string): boolean {
   return arg.length > 0;
 }
 
+/**
+ * Pfadartige Werte, die in einer Option stecken und die looksLikePath übersieht, weil das
+ * Argument mit "-" beginnt:
+ *   --file=/pfad, --exclude-from=liste   -> der Wert hinter "="
+ *   -f/pfad, -rf/pfad                    -> angehängter Wert einer Kurzoption
+ * Ohne diese Prüfung läse "grep --file=~/.aws/credentials -r ." eine Geheimnisdatei als
+ * Musterliste – ausserhalb des Lesebereichs, ohne Dialog. Werte hinter "=" werden immer
+ * geliefert (auch "auto" oder "*.ts"): Sie lösen sich gegen den Lesebereich auf und stören
+ * dort nicht – dieselbe Grosszügigkeit wie bei looksLikePath. Bei Kurzoptionen nur, wenn ein
+ * "/" vorkommt; weil nicht bekannt ist, welcher Buchstabe den Wert trägt (-rf/x: r oder f?),
+ * kommen beide Lesarten zurück – der Teil ab dem ersten "/" und der Teil nach dem ersten
+ * Buchstaben. Lieber einmal zu streng (-fsrc/x besser als "-f src/x" schreiben) als eine Lücke.
+ */
+export function eingebetteteWerte(arg: string): string[] {
+  if (!arg.startsWith('-') || arg === '-' || arg === '--') return [];
+  const gleich = arg.indexOf('=');
+  if (gleich >= 0) {
+    const wert = arg.slice(gleich + 1);
+    return wert ? [wert] : [];
+  }
+  if (arg.startsWith('--')) return [];
+  const slash = arg.indexOf('/');
+  if (slash < 0) return [];
+  return [...new Set([arg.slice(slash), arg.slice(2)])].filter(Boolean);
+}
+
+/**
+ * Trifft eine gesperrte Option auf ein Argument zu? Vier Schreibweisen, die getopt alle
+ * akzeptiert – ohne 3 und 4 liesse sich jede Sperre umgehen:
+ *   1. exakt                       -S             ist -S
+ *   2. lange Option mit Wert       --follow=name  beginnt mit "--follow="
+ *   3. gebündelte Kurzoptionen     -rSn           enthält S
+ *   4. GNU-Abkürzung               --deref        ist Anfang von --dereference-recursive
+ * Falschtreffer sind möglich (-eS meint das Muster "S") und bewusst hingenommen: Das Modell
+ * bekommt eine klare Ablehnung und schreibt die Option getrennt.
+ */
+export function flagGesperrt(arg: string, forbidden: string): boolean {
+  if (arg === forbidden || arg.startsWith(`${forbidden}=`)) return true;
+  const kurzesFlag = /^-[^-]$/.test(forbidden);
+  if (kurzesFlag && /^-[^-]/.test(arg) && arg.length > 2 && arg.includes(forbidden[1])) return true;
+  if (forbidden.startsWith('--') && arg.startsWith('--') && arg.length > 2
+      && arg.length < forbidden.length && forbidden.startsWith(arg)) return true;
+  return false;
+}
+
 function matchesGlob(name: string, pattern: string): boolean {
   const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
   return new RegExp(`^${escaped}$`, 'i').test(name);
@@ -335,12 +380,17 @@ export function checkCommand(command: string, config: CommandConfig): GuardVerdi
 
   for (const arg of parsed.args) {
     for (const forbidden of rule.forbidFlags ?? []) {
-      // -exec und --file=x gleichermassen erfassen
-      if (arg === forbidden || arg.startsWith(`${forbidden}=`)) {
+      // exakt, mit Wert (--file=x), gebündelt (-rS) und als GNU-Abkürzung (--deref)
+      if (flagGesperrt(arg, forbidden)) {
+        // grep -R ist unter GNU gefährlich, die harmlose Form nur einen Buchstaben entfernt.
+        const tipp = parsed.program === 'grep' && (forbidden === '-R' || forbidden === '--dereference-recursive')
+          ? ' Rekursiv ohne Symlinks: -r (klein).'
+          : '';
+        const wo = arg === forbidden ? '' : ` (in "${arg}")`;
         return {
           kind: 'reject',
-          reason: `Option ${forbidden} ist für ${parsed.program} gesperrt – sie kann Dateien verändern, ` +
-                  `Programme starten oder Symlinks aus dem erlaubten Bereich hinausführen.`,
+          reason: `Option ${forbidden} ist für ${parsed.program} gesperrt${wo} – sie kann Dateien verändern, ` +
+                  `Programme starten oder Symlinks aus dem erlaubten Bereich hinausführen.${tipp}`,
         };
       }
     }

@@ -72,6 +72,51 @@ for (const cmd of ['grep -c muster datei.txt', 'ls -l', 'find . -type f']) {
   check(JSON.stringify(cmd), v.kind === 'ok', `kind=${v.kind} reason=${v.reason || ''}`);
 }
 
+console.log('\n[3d] Sperren greifen auch gebuendelt, abgekuerzt und bei GNU-Varianten');
+console.log('     getopt erlaubt -rS statt -r -S und --deref statt --dereference-recursive.');
+for (const [cmd, warum] of [
+  ['grep -rS foo .', 'Buendel mit -S (folgt Symlinks, macOS)'],
+  ['grep -rSn foo .', 'Buendel, -S in der Mitte'],
+  ['grep -R foo .', 'GNU: folgt allen Symlinks'],
+  ['grep -Rn foo .', 'GNU, gebuendelt'],
+  ['grep --dereference-recursive foo .', 'GNU, lange Form'],
+  ['grep --deref foo .', 'GNU-Abkuerzung'],
+  ['rg -nL foo', 'Buendel mit -L (folgt Symlinks)'],
+  ['tail -fn 5 x.log', 'Buendel mit -f (blockiert)'],
+  ['tail -F x.log', '-F folgt wie -f'],
+  ['tail --f x.log', 'GNU-Abkuerzung von --follow'],
+  ['file -C', 'schreibt magic.mgc'],
+  ['file -bC x', 'gebuendelt'],
+  ['find . -fprint0 out.txt', 'GNU: schreibt Datei'],
+]) {
+  const v = verdict(cmd);
+  check(`${cmd}  (${warum})`, v.kind === 'reject', `kind=${v.kind}`);
+}
+{
+  const v = verdict('grep -R foo .');
+  check('  Ablehnung von -R nennt die harmlose Form -r', /-r \(klein\)/.test(v.reason || ''), v.reason || '');
+}
+
+console.log('\n[3e] Regression: Buendel ohne gesperrte Buchstaben und aehnliche Optionen bleiben ok');
+for (const cmd of [
+  'grep -rn foo .', 'grep -rnA3 foo .', 'grep -rni foo src', 'grep --null-data foo x',
+  'find . -name x -ls', 'find . -newer x -type f', 'tail -n 20 x.log', 'tail -n5 x.log',
+  'file -b x', 'head -5 x', 'ls -la', 'wc -lw x', 'stat -f %z x',
+]) {
+  const v = verdict(cmd);
+  check(JSON.stringify(cmd), v.kind === 'ok', `kind=${v.kind} reason=${v.reason || ''}`);
+}
+
+console.log('\n[3f] flagGesperrt: die vier Schreibweisen einzeln');
+for (const [arg, flag, soll] of [
+  ['-S', '-S', true], ['-rS', '-S', true], ['-Sr', '-S', true], ['-rs', '-S', false],
+  ['--follow=name', '--follow', true], ['--fol', '--follow', true], ['--follower', '--follow', false],
+  ['--null-data', '--null', false], ['-exec', '-exec', true], ['-execdir', '-exec', false],
+  ['-ls', '-L', false], ['-', '-S', false], ['--', '--follow', false],
+]) {
+  check(`flagGesperrt(${JSON.stringify(arg)}, ${flag}) = ${soll}`, g.flagGesperrt(arg, flag) === soll);
+}
+
 console.log('\n[4] Nicht gelistete Programme -> Freigabe-Dialog (kind=ask), nicht heimlich erlaubt');
 for (const cmd of ['rm -rf /', 'sudo whoami', 'curl http://x.tld', 'npm run build', 'python3 -c "1"']) {
   const v = verdict(cmd);
@@ -202,6 +247,23 @@ for (const [arg, soll] of [
 ]) {
   check(`${JSON.stringify(arg)} -> ${soll ? 'wird geprueft' : 'Option, uebersprungen'}`,
     g.looksLikePath(arg) === soll);
+}
+
+console.log('\n[9b] Eingebettete Pfade in Optionen (--file=/pfad, -f/pfad)');
+console.log('     Sie beginnen mit "-" und wuerden sonst ungeprueft beim Kindprozess landen.');
+for (const [arg, soll] of [
+  ['--file=/Users/myki/.aws/credentials', ['/Users/myki/.aws/credentials']],
+  ['--exclude-from=../liste', ['../liste']],
+  ['--color=auto', ['auto']],
+  ['--include=*.ts', ['*.ts']],
+  ['--opt=', []],
+  ['-f/etc/passwd', ['/etc/passwd']],
+  ['-rf/etc/passwd', ['/etc/passwd', 'f/etc/passwd']],
+  ['-fsrc/x', ['/x', 'src/x']],
+  ['-rn', []], ['-n5', []], ['--follow', []], ['-', []], ['--', []], ['datei.txt', []],
+]) {
+  const ist = g.eingebetteteWerte(arg);
+  check(`${JSON.stringify(arg)} -> ${JSON.stringify(soll)}`, JSON.stringify(ist) === JSON.stringify(soll), JSON.stringify(ist));
 }
 
 console.log('\n[10] Umgebung saeubern');
