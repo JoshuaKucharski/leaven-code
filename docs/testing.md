@@ -21,12 +21,12 @@ npm run test:session     # „weiter"-Session-Validierung
 
 | Datei | Umfang | Prüft |
 |---|---|---|
-| `tests/test-guard.js` | 100 | Befehlszerlegung, Allowlist, Optionssperren, `redirect`/`allow`-Verdicts, `php -l`, Geheimnis-Erkennung, Umgebungssäuberung |
+| `tests/test-guard.js` | 177 | Befehlszerlegung, Allowlist, Optionssperren (auch gebündelt, abgekürzt, GNU-Varianten), eingebettete Optionswerte, `redirect`/`allow`/`sedread`-Verdicts, `php -l`, Geheimnis-Erkennung, Umgebungssäuberung |
 | `tests/test-logic.js` | 13 | LoopBreaker (Fehlalarme, echte Schleifen, Zyklen), DSML-Parser |
 | `tests/test-url.js` | 31 | URL-Guard: SSRF, Domain-Allowlist, HTML→Text |
-| `tests/test-anthropic.js` | 36 | Provider-Fähigkeiten (alle Modelle), `zuAnthropicRequest`/`ausAnthropicResponse`, Qwen |
+| `tests/test-anthropic.js` | 44 | Provider-Fähigkeiten (alle Modelle), `zuAnthropicRequest`/`ausAnthropicResponse`, Denktiefe ohne Thinking, `finishReasonAus`, Qwen |
 | `tests/test-stream.js` | 36 | SSE-Parsing, Tool-Call-Assembly, UTF-8-Chunk-Grenzen, `reasoning_content`-Phantom |
-| `tests/test-usage.js` | 15 | Token-Summe, Tages-Reset, Budget-Prüfung |
+| `tests/test-usage.js` | 17 | Token-Summe, Tages-Reset, Budget-Prüfung |
 | `tests/test-session.js` | 8 | `sessionGueltig` (gültig/ungültig, Format-Invariante) |
 
 Jede Suite gibt `N bestanden, M fehlgeschlagen` aus und setzt den Exit-Code entsprechend.
@@ -36,7 +36,8 @@ Jede Suite gibt `N bestanden, M fehlgeschlagen` aus und setzt den Exit-Code ents
 - 10 Injektionsversuche: `;` `&&` `|` `>` `<` `$( )` Backtick `${}` `&` Zeilenumbruch
 - harmlose Allowlist-Befehle, die durchgehen müssen
 - git-Befehle → müssen im Dialog landen (nicht mehr auf der Allowlist)
-- gefährliche Optionen: `find -delete`, `find -exec`, `grep -S`, `tail -f`
+- gefährliche Optionen: `find -delete`, `find -exec`, `grep -S`, `tail -f` – auch gebündelt (`grep -rS`, `tail -fn 5`), abgekürzt (`--deref`, `--f`) und in GNU-Form (`grep -R`, `tail -F`, `file -C`, `find -fprint0`)
+- eingebettete Optionswerte (`--file=/pfad`, `-f/pfad`, `-rf/pfad`) werden als Pfadkandidaten erkannt
 - Regression: harmlose Optionen wie `grep -c` dürfen nicht mitgesperrt werden
 - nicht gelistete Programme → Dialog, nicht heimlich erlaubt
 - Umgehung über Programmpfad (`/bin/rm`, `./script.sh`) → Dialog

@@ -329,7 +329,7 @@ In sinnvoller Reihenfolge — jeder Punkt ist für sich nützlich:
 2. **Sitzungs-Kennung** je CLI-Start.
 3. **Iterationszähler nach aussen geben** — liegt heute nur lokal in `runAgentTurn()`.
 4. **Rückkanal**: `frageplattform()` mit Polling, Zeitüberschreitung → `stopp`. Einbau an
-   der Stelle, an der heute `frageJaNein('Weitere 40 Schritte…')` steht.
+   der Stelle, an der heute `frageJaNein('Weitere … Schritte…')` steht (`MAX_ITERATIONS`, derzeit 99 999).
    Dabei **nur** das Feld `antwort` auswerten, alle anderen ignorieren.
 5. **Auftrags-Start**: Rechte aus der Plattform-Antwort übernehmen — einmalig, vor dem
    ersten Modellaufruf.

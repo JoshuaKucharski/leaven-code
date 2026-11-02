@@ -10,7 +10,7 @@ Die Leitfrage dieses Dokuments: **Was macht leavencode sicherer und datenschutzf
 
 1. **Die Verbindung geht nur hinaus.** Beide Werkzeuge sind HTTP-Clients ohne eingehenden Kanal; kein Anbieter kann von sich aus auf den Rechner zugreifen, und ohne laufende Sitzung passiert nichts. Für leavencode ist das am Code belegt (`docs/security/environmental-facts.md`): kein `createServer`, kein `listen`.
 2. **Das Modell hat keine Hände.** Es schickt Werkzeug-Bitten als JSON; ausgeführt wird lokal, nach lokalen Regeln.
-3. **Der Unterschied liegt beim Türsteher.** Bei Claude Code ist der lokale Code, der die Bitten prüft, Anthropics Programm – ein großes npm-Paket, das man installiert und dem man vertraut wie jeder fremden Software. Bei leavencode ist der Türsteher **eigener Code**: rund 5 000 Zeilen TypeScript, fünf Abhängigkeiten, 264 Tests, in einer Stunde lesbar. Das ist der Kern des Sicherheitsarguments – nicht, dass die Regeln klüger wären, sondern dass man sie **besitzt und prüfen kann**.
+3. **Der Unterschied liegt beim Türsteher.** Bei Claude Code ist der lokale Code, der die Bitten prüft, Anthropics Programm – ein großes npm-Paket, das man installiert und dem man vertraut wie jeder fremden Software. Bei leavencode ist der Türsteher **eigener Code**: rund 5 000 Zeilen TypeScript, fünf Abhängigkeiten, 326 Tests, in einer Stunde lesbar. Das ist der Kern des Sicherheitsarguments – nicht, dass die Regeln klüger wären, sondern dass man sie **besitzt und prüfen kann**.
 
 ---
 
@@ -47,7 +47,7 @@ Bis zum 2026-07-21 lief `execute_command` über eine Shell; gemessen wurde, dass
 
 ### 3.2 Getrennte Lese- und Schreibbereiche, symlink-fest (`securePath`, `util/pfade.ts`)
 
-Ein Lesebereich, mehrere Schreibbereiche; relative Pfade zählen immer ab dem Lesebereich; `realpathSoFar()` löst Symlinks so weit auf, wie der Pfad existiert (ein Link im erlaubten Bereich auf `/tmp` wird abgelehnt – verifiziert); Argumente nicht gelisteter Programme werden gegen den **Schreib**bereich geprüft, damit `rm -rf src/` nicht durchgeht, nur weil `src/` lesbar ist.
+Ein Lesebereich, mehrere Schreibbereiche; relative Pfade zählen immer ab dem Lesebereich; `realpathSoFar()` löst Symlinks so weit auf, wie der Pfad existiert (ein Link im erlaubten Bereich auf `/tmp` wird abgelehnt – verifiziert); Argumente nicht gelisteter Programme werden gegen den **Schreib**bereich geprüft, damit `rm -rf src/` nicht durchgeht, nur weil `src/` lesbar ist. Auch Pfade in Optionswerten (`grep --file=/pfad`, `-f/pfad`) laufen durch die Prüfung; gesperrte Optionen werden auch gebündelt (`-rS`) und abgekürzt (`--deref`) erkannt.
 
 *Claude Code:* Arbeitsverzeichnis plus `additionalDirectories`; `Read(../)`/`Edit(../)`-Deny-Regeln (so schreibt sie die Leaven-Plattform in `.claude/settings.local.json`). Eine Trennung „breit lesen, eng schreiben" muss man aus Regeln zusammensetzen.
 
@@ -198,8 +198,7 @@ Ehrlichkeit gehört zur Sicherheitsdoku dieses Projekts („wer nur das Schutz-D
 | **Prompt-Injection** über gelesene Dateien und Webseiten | ungelöst; Verteidigung sind Bereichsgrenzen und Rückfragen | gleich; beide ohne verlässlichen Schutz |
 | **Keine OS-Sandbox** | Kindprozesse laufen mit den Rechten des Nutzers; keine Mount-Namespaces, kein Seatbelt, keine Ressourcengrenzen | Claude Code bietet eine Sandbox-Einstellung für Bash; hier ist Claude Code **stärker** |
 | **`-y` im Launcher-Betrieb** | Die Plattform startet mit `-y`: alle Werkzeuge ohne Rückfrage, Shell frei, Bereiche = Arbeitsverzeichnis. Bewusst so entschieden („die Plattform ist die einzige Instanz mit 100 % Rechten"), aber der riskanteste Betriebsmodus | ein Headless-Modus, der nur das Profil erlaubt und sonst ablehnt, ist spezifiziert, nicht gebaut |
-| Pfade als Optionswerte (`grep --file=/pfad`) | ungeprüft | – |
-| Symlinks während der Rekursion eines Kindprozesses | verlässt sich auf Programm-Vorgaben; unter Linux `grep -R` nicht gesperrt | Sandbox hilft dort |
+| Symlinks während der Rekursion eines Kindprozesses | verlässt sich auf Programm-Vorgaben; die erzwingenden Optionen (`grep -S`/`-R`, `find -L`, `rg --follow`) sind gesperrt, auch gebündelt oder abgekürzt | Sandbox hilft dort |
 | DNS-Rebinding bei `fetch_url` | Prüfung sieht den Hostnamen, nicht die IP | – |
 | Geheimnisse jenseits der Dateinamen-Muster | Inhalte werden nicht geprüft | gleich |
 | Kein Audit-Protokoll | nach dem Schließen des Terminals ist nichts mehr nachvollziehbar | Claude Code führt Sitzungsprotokolle |
@@ -230,12 +229,12 @@ Vor jeder Sitzung eine Sekunde: *Was liegt in meinem Lesebereich, das ich nicht 
 
 Wer das Sicherheitsversprechen selbst nachprüfen will, braucht etwa eine Stunde:
 
-1. `src/guards/commandGuard.ts` (375 Zeilen) – Metazeichen, Allowlist, Verdicts, Geheimnisse, Umgebung.
+1. `src/guards/commandGuard.ts` (425 Zeilen) – Metazeichen, Allowlist, Flag-Abgleich, Optionswerte, Verdicts, Geheimnisse, Umgebung.
 2. `securePath()` in `src/index.ts` – Bereiche, Symlinks, Geheimnis-Sperre.
 3. `src/guards/urlGuard.ts` (96 Zeilen) – Netz.
 4. `isAutoApproved()` in `src/index.ts` – wer ohne Rückfrage läuft.
 5. `config/commands.json` – die Listen, mit Begründungen im Klartext.
-6. `npm test` plus die vier Provider-Suiten – 264 Prüfungen, darunter 10 Injektionsversuche, Suffix-Tricks bei Domains, SSRF-Adressen, Registry-Umgehungen.
+6. `npm test` plus die vier Provider-Suiten – 326 Prüfungen, darunter 10 Injektionsversuche, Flag-Bündel und -Abkürzungen, Suffix-Tricks bei Domains, SSRF-Adressen, Registry-Umgehungen.
 
 Genau das ist der Punkt, an dem leavencode anders ist als Claude Code: Das Tor ist kein Vertrauensvorschuss, sondern Lektüre.
 
@@ -243,4 +242,4 @@ Genau das ist der Punkt, an dem leavencode anders ist als Claude Code: Das Tor i
 
 ## 9. Verwandte Dokumente
 
-`docs/security/environmental-facts.md` (kann der Anbieter hereingreifen? nein, mit Beleg) · `docs/security/environmental-facts-extended.md` (dasselbe für Claude, als Anbieter und als Claude Code) · `docs/security/sourdough-cli-bash-commands-security.md` (Befehlssicherheit) · `docs/security/sourdough-cli-critical-issues.md` (Restrisiken mit „was wäre nötig") · `docs/security/command-registration.md` (Vorschlag → Prüfung → Freigabe) · `docs/sourdough-cli/privacy-relevant-issues.md` (Datenschutz-Kurzfassung).
+`docs/security/environmental-facts.md` (kann der Anbieter hereingreifen? nein, mit Beleg) · `docs/security/environmental-facts-extended.md` (dasselbe für Claude, als Anbieter und als Claude Code) · `docs/security/leaven-cli-bash-commands-security.md` (Befehlssicherheit) · `docs/security/leaven-cli-critical-issues.md` (Restrisiken mit „was wäre nötig") · `docs/security/command-registration.md` (Vorschlag → Prüfung → Freigabe) · `docs/leaven-cli/privacy-relevant-issues.md` (Datenschutz-Kurzfassung).

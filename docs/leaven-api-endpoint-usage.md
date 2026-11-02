@@ -9,7 +9,7 @@ sie senden kann?
 ---
 
 > **Geplante Erweiterung:** Automatische Fortschrittsmeldungen und ein Rückkanal, über den
-> die Plattform die Nachfrage nach 40 Schritten beantwortet, sind in
+> die Plattform die Nachfrage nach `MAX_ITERATIONS` Schritten beantwortet (heute 99 999), sind in
 > [leaven-platform-connect/api-docs.md](./leaven-platform-connect/api-docs.md)
 > spezifiziert — dort **noch nicht implementiert**.
 

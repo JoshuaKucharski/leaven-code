@@ -57,28 +57,24 @@ Lesebereich, und sind völlig regelkonform lesbar.
 
 ---
 
-## 3. Pfade als Optionswerte werden nicht geprüft — MITTEL
+## 3. Pfade als Optionswerte — geschlossen
 
-**Was:** `looksLikePath()` prüft seit 2026-07-21 jedes Argument, das nicht mit `-`
-beginnt. Damit sind `..`, `.` und blosse Dateinamen abgedeckt. **Nicht** abgedeckt sind
-Pfade, die als Wert einer Option übergeben werden:
+**Was:** `looksLikePath()` prüft jedes Argument, das nicht mit `-` beginnt. Pfade **im Wert
+einer Option** übersprang es:
 
 ```
-grep --file=/pfad/zu/muster.txt      --file=… wird als eine Option gesehen, nicht zerlegt
-grep -f /pfad/zu/muster.txt          -f nimmt das FOLGENDE Argument als Pfad
-find . -newer /pfad/zur/referenz     Pfad als Optionswert
+grep --file=/pfad/zu/muster.txt      wurde als eine Option gesehen, nicht zerlegt
+grep -f /pfad/zu/muster.txt          -f nimmt das FOLGENDE Argument – das war immer geprüft
+find . -newer /pfad/zur/referenz     ebenso: eigenständiges Argument
 ```
 
-Im ersten Fall beginnt das Argument mit `-` und wird übersprungen. Im zweiten und dritten
-Fall wird der Pfad zwar geprüft — aber nur zufällig, weil er als eigenständiges Argument
-dasteht.
-
-**Auswirkung:** Ein erlaubtes Programm könnte über `--option=/pfad` eine Datei ausserhalb
-des Lesebereichs lesen.
-
-**Was nötig wäre:** Argumente der Form `--name=wert` aufspalten und den Wert mitprüfen
-(kleiner Schritt, lohnt sich). Vollständig wäre eine Argumentgrammatik je Programm —
-aufwendig und pro Programmversion unterschiedlich.
+**Stand:** `eingebetteteWerte()` in `commandGuard.ts` liefert die Pfadkandidaten einer
+Option, `execute_command` prüft sie mit `securePath()` wie jedes andere Argument: der Wert
+hinter `=` immer, bei Kurzoptionen mit `/` der Teil ab dem ersten `/` und der Teil nach dem
+Optionsbuchstaben (`-rf/x` → `/x` und `f/x`). Bekannte Grenze: relativ angehängte Werte wie
+`-fsrc/x` werden zu streng abgelehnt (getrennt schreiben). Eine vollständige
+Argumentgrammatik je Programm gibt es weiterhin nicht — sie wäre pro Programmversion
+unterschiedlich.
 
 ---
 
@@ -89,11 +85,13 @@ wie `grep -r` oder `find`, macht dieser seine **eigene** Verzeichnisrekursion. V
 lässt sich nicht abfangen, welchen Links er dabei folgt.
 
 **Aktuelle Lage:** macOS-`grep` folgt bei Rekursion standardmässig keinen Symlinks (`-p`
-ist Default), `find` ebenfalls nicht. Die erzwingenden Optionen (`grep -S`, `find -L`,
-`rg --follow`) sind gesperrt.
+ist Default), `find` ebenfalls nicht. Die erzwingenden Optionen sind gesperrt — `grep -S`
+(BSD) und `grep -R`/`--dereference-recursive` (GNU), `find -L`/`-follow`, `rg --follow`/`-L` —
+und zwar auch gebündelt (`-rS`) und als GNU-Abkürzung (`--deref`).
 
-**Auswirkung:** Verlässt sich auf Vorgabewerte fremder Programme. Eine andere
-`grep`-Variante im `PATH` (GNU grep via Homebrew) kann sich anders verhalten.
+**Auswirkung:** Verlässt sich auf Vorgabewerte fremder Programme. Für GNU grep (Linux,
+Homebrew) sind die bekannten Optionen abgedeckt; ein anderes Werkzeug im `PATH` mit eigenem
+Symlink-Verhalten bliebe unbemerkt.
 
 **Was nötig wäre:** Ausführung in einem Mount-Namespace bzw. Container ohne Zugriff auf
 das übrige Dateisystem. Innerhalb des Programms nicht lösbar.

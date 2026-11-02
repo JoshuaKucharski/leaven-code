@@ -32,7 +32,7 @@ Zur Einordnung: Verglichen werden rund 5 000 Zeilen eigener Code mit einem Produ
 
 | Gewicht | Pain Point | Warum es schmerzt |
 |---|---|---|
-| ●●● | **Kein Live-Text**: Der Antworttext wird nie gestreamt, nur der graue Gedankenstrom (und der auch nur bei DeepSeek/Qwen). Bei Claude gar kein Streaming, Timeout 300 s | Lange Pausen mit Spinner; Claude Code zeigt Text sofort |
+| ●●● | **Kein Live-Text**: Der Antworttext wird nie gestreamt, nur der graue Gedankenstrom (und der auch nur bei DeepSeek/Qwen). Bei Claude gar kein Streaming, Zeitlimit 600 s | Lange Pausen mit Spinner; Claude Code zeigt Text sofort |
 | ●● | **Kein Diff** vor oder nach `edit_file`, keine farbige Vorschau, kein Rückgängig | Man sieht „1 Stelle ersetzt", nicht was |
 | ●● | **Terminal-UI ist selbst gebaut** und erwiesenermaßen fragil: Raw-Modus, Listener sichern/wiederherstellen, Zeilen zählen für das Neuzeichnen – jede dieser Stellen hat schon eine Fehlersuche gekostet (`docs/troubleshooting.md`) | Jede UI-Änderung ist riskant |
 | ● | Keine Statuszeile, keine Mehrzeilen-Eingabe mit Editor, Paste-Erkennung per 120-ms-Heuristik statt Bracketed Paste (bewusst) | – |
@@ -97,5 +97,5 @@ Wenn nur ein Nachmittag Zeit ist, diese fünf (alle in [open-work.md](./open-wor
 1. Session bei `/exit` und Strg-C sichern, SIGINT-Handler (D1, D3).
 2. „Immer erlauben" als geführter Registry-Eintrag im Dialog (D7).
 3. `started`/`ended`-Pings aus der CLI (A5) – schließt die stille Inkonsistenz im Logbuch.
-4. Links und Zahlen in `docs/` reparieren (E2, E3).
-5. Warnzeile unter `--yes` und `grep -R` sperren (C9, C3).
+4. `ora` aus `package.json`, `index.ts.backup` und die leeren Ordner entfernen (E4, E5).
+5. Warnzeile unter `--yes` (C9).

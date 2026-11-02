@@ -82,8 +82,12 @@ unberührt. Reine, testbare Funktionen:
   - Werkzeuge: `function.parameters` → `input_schema`
   - **kein** `temperature`; `output_config.effort`; Opus `thinking:{type:'adaptive'}`;
     **Fable: `thinking` weglassen** + `fallbacks:[{model:'claude-opus-4-8'}]`
+  - `max_tokens` 16000 (Thinking zählt mit), Zeitlimit 600 s; ohne Thinking wird die Denktiefe
+    auf höchstens `high` gekappt – die API nimmt `disabled` nur bis `high` an (Opus 5: sonst HTTP 400)
 - `ausAnthropicResponse(data)` → Assistant-Nachricht in DeepSeek-Form (`content`, `tool_calls`,
   `_providerRaw`); `stop_reason:'refusal'` (Fable) → saubere Meldung.
+- `finishReasonAus(data)` → `stop_reason` in DeepSeek-Form: `max_tokens` wird zu `'length'`, die
+  Schleife zeigt dann dieselbe Längenwarnung wie bei DeepSeek/Qwen.
 - `callAnthropic(...)` → `axios.post` auf `api.anthropic.com` mit `x-api-key` +
   `anthropic-version` (+ `anthropic-beta` für Fables Fallbacks), Retry wie im DeepSeek-Pfad.
 
@@ -138,6 +142,6 @@ und `/thinking` setzen die Konversation deshalb zurück.
 
 ## Tests
 
-`tests/test-anthropic.js` (27 Prüfungen, **ohne** API) deckt Fähigkeiten, `zuAnthropicRequest`
+`tests/test-anthropic.js` (44 Prüfungen, **ohne** API) deckt Fähigkeiten, `zuAnthropicRequest`
 und `ausAnthropicResponse` ab. Bewusst **nicht** in `npm test`, sondern separat:
 `npm run test:anthropic`. Der Live-Test (echte API) braucht `ANTHROPIC_API_KEY`.

@@ -97,7 +97,7 @@ Alles, woran ein selbst entwickeltes System andocken kann – unabhängig von La
 | `post_to_endpoint` | das Modell | **immer** Dialog (interaktiv) bzw. `-y` | `POST <endpoint>`, `Content-Type: application/json`, `User-Agent: leaven-cli`, `Authorization: Bearer <LEAVEN_API_TOKEN>`, Body = `payload`-Objekt des Modells; https-Pflicht, keine Weiterleitungen, Antwort bis 100 KB, ans Modell gekürzt auf 2 000 Zeichen |
 | `fetch_url` | das Modell | Leserecht + Domain-Allowlist | GET, Text zurück ans Modell |
 
-Pflichten der Gegenstelle (aus `docs/sourdough-api-endpoint-usage.md`): authentifizieren, Schema prüfen (der Body stammt aus einem Sprachmodell), Größe begrenzen, nichts ungefiltert anzeigen, keine 3xx-Antworten, Ratenbegrenzung. Referenzimplementierungen in Express und Laravel stehen dort.
+Pflichten der Gegenstelle (aus `docs/leaven-api-endpoint-usage.md`): authentifizieren, Schema prüfen (der Body stammt aus einem Sprachmodell), Größe begrenzen, nichts ungefiltert anzeigen, keine 3xx-Antworten, Ratenbegrenzung. Referenzimplementierungen in Express und Laravel stehen dort.
 
 ### 2.3 Dateien als Schnittstelle
 
@@ -113,7 +113,7 @@ Pflichten der Gegenstelle (aus `docs/sourdough-api-endpoint-usage.md`): authenti
 
 ### 2.4 Was es (noch) nicht gibt
 
-Keine eingehende API, kein maschinenlesbarer Ausgabemodus (JSON-Zeilen), kein Ereignisstrom, keine Sitzungs-Kennung, kein Fragen/Antworten-Kanal, kein Abbruch von außen, kein Modell-Listing. Jede davon ist in [open-work.md](./open-work.md) (A1–A8) beschrieben; der Entwurf steht in `docs/sourdough-platform-connect/api-docs.md`.
+Keine eingehende API, kein maschinenlesbarer Ausgabemodus (JSON-Zeilen), kein Ereignisstrom, keine Sitzungs-Kennung, kein Fragen/Antworten-Kanal, kein Abbruch von außen, kein Modell-Listing. Jede davon ist in [open-work.md](./open-work.md) (A1–A8) beschrieben; der Entwurf steht in `docs/leaven-platform-connect/api-docs.md`.
 
 ---
 
@@ -211,7 +211,7 @@ Heute nur über das Terminal: Nach Abschluss eines Turns nimmt die CLI den näch
        └────────── Buckets = gemeinsames Vokabular · TaskCards = Zustandsmaschine ──────────┘
 ```
 
-### 5.2 Das Protokoll (Entwurf aus `docs/sourdough-platform-connect/api-docs.md`, erweitert)
+### 5.2 Das Protokoll (Entwurf aus `docs/leaven-platform-connect/api-docs.md`, erweitert)
 
 **Ereignisse** (`POST {endpoint}/events`, ohne Freigabe, 2–3 s Timeout, Fehler still, nie blockierend):
 
@@ -284,4 +284,4 @@ Die Reihenfolge ist so gewählt, dass jede Stufe für sich nützlich ist und kei
 
 ## 6. Verwandte Dokumente
 
-`docs/sourdough-platform-connect/api-docs.md` (Spezifikation von Ereignissen, Rückkanal, Headless, Gegenstelle) · `docs/sourdough-api-endpoint-usage.md` (`post_to_endpoint`, Pflichten der Gegenstelle) · `docs/internet.md` (Netzgrundlagen) · `../leaven/docs/AGENTS.md`, `../leaven/docs/API.md`, `../leaven/docs/CLI_TASK_CONTRACT.md` (Plattformseite) · `active-order-prompt/` (die Aufträge, mit denen Launcher-Anbindung und Board-Kreislauf gebaut wurden).
+`docs/leaven-platform-connect/api-docs.md` (Spezifikation von Ereignissen, Rückkanal, Headless, Gegenstelle) · `docs/leaven-api-endpoint-usage.md` (`post_to_endpoint`, Pflichten der Gegenstelle) · `docs/internet.md` (Netzgrundlagen) · `../leaven/docs/AGENTS.md`, `../leaven/docs/API.md`, `../leaven/docs/CLI_TASK_CONTRACT.md` (Plattformseite) · `active-order-prompt/` (die Aufträge, mit denen Launcher-Anbindung und Board-Kreislauf gebaut wurden).

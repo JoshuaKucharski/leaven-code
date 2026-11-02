@@ -44,6 +44,5 @@ Provider**, **Prompt-Injection**, GET-Exfiltration, Geheimnisse jenseits der Mus
 ## Was man noch bauen könnte → [./upcoming-tasks.md](./upcoming-tasks.md)
 - **Audit-Protokoll** (nachvollziehen, was ausgeführt/gesendet wurde).
 - **git kontrolliert** zurückholen ([../security-projects/git-security-feature.md](../security-projects/git-security-feature.md)).
-- **`--option=/pfad`** aufspalten und den Pfad mitprüfen.
 - **Ausgehende Egress-Kontrolle** dokumentieren (OS-Firewall, nur erlaubte API-Hosts).
 - Optional: `session.json`/`usage.json` verschlüsseln (enthalten Konversationsdaten).

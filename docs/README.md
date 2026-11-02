@@ -65,5 +65,5 @@ liegen, sind aber in Teilen veraltet.
 npm run build
 export DEEPSEEK_API_KEY="sk-…"
 node dist/index.js
-npm test        # 119 Prüfungen, ohne API-Zugriff
+npm test        # 221 Prüfungen, ohne API-Zugriff
 ```

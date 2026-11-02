@@ -1,6 +1,6 @@
 # upcoming-tasks — offene Aufgaben
 
-**Stand:** 2026-07-30. Was noch aussteht, nach Wichtigkeit.
+**Stand:** 2026-07-30; Gesamtliste mit Stand 2026-11-02: [../leavencode-documentation/open-work.md](../leavencode-documentation/open-work.md). Was noch aussteht, nach Wichtigkeit.
 
 ## Features / Ausbau
 | Aufgabe | Umfang | Wo/Notiz |
@@ -15,7 +15,6 @@
 | Aufgabe | Umfang | Notiz |
 |---|---|---|
 | **Audit-Protokoll** | klein | Nachvollziehen, was ausgeführt/gesendet wurde. In critical-issues Punkt 9. |
-| **`--option=/pfad` aufspalten** und Pfad mitprüfen | klein, lohnt sich | critical-issues Punkt 3. |
 | **Egress-Kontrolle dokumentieren** | klein | OS-Firewall nur auf erlaubte API-Hosts. |
 | **Lokale Zustandsdateien verschlüsseln** | mittel | `session.json`/`usage.json` liegen im Klartext (in `~/.leaven`, AI-gesperrt). |
 | **Warnzeile beim Start unter `--yes`** | sehr klein | critical-issues Punkt 7. |

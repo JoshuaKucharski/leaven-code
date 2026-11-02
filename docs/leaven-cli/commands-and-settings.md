@@ -10,9 +10,9 @@ Vertiefung: [../configuration.md](../configuration.md), [./features.md](./featur
 | `/help` | Alle Befehle + Bedienung anzeigen |
 | `/status` | Aktueller Stand: Modell, Thinking, Denktiefe/Temperature, Anzeige (Gedanken/Schritte), Budget, Auto-weiter, Bereiche, API-Key |
 | `/rights` | Rechte anzeigen/ändern: **Lesen**, **Schreiben**, **Shell-Befehle** (je an/aus). Enter behält den Wert |
-| `/model <name>` | Modell wählen. Kurznamen: `opus`, `fable`, `qwen`, `deepseek`, `claude`. Oder voll: `deepseek-v4-pro`, `deepseek-v4-flash`, `claude-opus-4-8`, `claude-fable-5`, `qwen3.7-max`. Ohne Argument = Auswahl-Menü. **Setzt den Verlauf zurück.** |
+| `/model <name>` | Modell wählen. Kurznamen: `opus`, `fable`, `qwen`, `deepseek`, `claude`. Oder voll: `deepseek-v4-pro`, `deepseek-v4-flash`, `claude-opus-5`, `claude-opus-4-8`, `claude-fable-5`, `qwen3.7-max`. Ohne Argument = Auswahl-Menü. **Setzt den Verlauf zurück.** |
 | `/thinking on\|off` | Denkmodus des Modells an/aus. Bei **Fable** immer an (nicht abschaltbar). **Setzt den Verlauf zurück.** |
-| `/effort <stufe>` | Denktiefe. DeepSeek: `high`, `max`. Anthropic: `low`, `medium`, `high`, `xhigh`, `max`. Qwen: nicht einstellbar |
+| `/effort <stufe>` | Denktiefe. DeepSeek: `high`, `max`. Anthropic: `low`, `medium`, `high`, `xhigh`, `max` (ohne Thinking sendet der Adapter höchstens `high`). Qwen: nicht einstellbar |
 | `/temperature <0.0–2.0>` | Temperatur setzen. Nur **DeepSeek/Qwen** — bei Claude ausgeblendet (Anthropic lehnt es ab) |
 | `/output reasoning on\|off` | **Live-Gedankenstrom** (grau) anzeigen/ausblenden |
 | `/output steps on\|off` | **Zwischenschritte** anzeigen; aus = nur Endergebnis + Bericht |

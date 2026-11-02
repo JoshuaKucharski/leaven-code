@@ -1,6 +1,6 @@
 # leavencode – Offene Weiterentwicklungen
 
-**Stand:** 2026-11-02 · Zusammengeführt aus `docs/sourdough-cli/upcoming-tasks.md`, `docs/security/sourdough-cli-critical-issues.md`, `docs/sourdough-platform-connect/api-docs.md`, den Handover-Dokumenten und einer eigenen Prüfung des Codes an diesem Tag. Jeder Punkt nennt Stand, Umfang und Fundstelle. Reihenfolge innerhalb der Abschnitte nach Nutzen.
+**Stand:** 2026-11-02 · Zusammengeführt aus `docs/leaven-cli/upcoming-tasks.md`, `docs/security/leaven-cli-critical-issues.md`, `docs/leaven-platform-connect/api-docs.md`, den Handover-Dokumenten und einer eigenen Prüfung des Codes an diesem Tag. Jeder Punkt nennt Stand, Umfang und Fundstelle. Reihenfolge innerhalb der Abschnitte nach Nutzen.
 
 Legende Umfang: **S** = Stunden · **M** = ein bis wenige Tage · **L** = eigene Arbeitseinheit mit Tests.
 
@@ -10,7 +10,7 @@ Legende Umfang: **S** = Stunden · **M** = ein bis wenige Tage · **L** = eigene
 
 | # | Aufgabe | Stand | Umfang | Fundstelle |
 |---|---|---|---|---|
-| A1 | **Headless-Modus** (`--headless`): keine Dialoge, nicht freigegebene Werkzeuge werden **abgelehnt statt erfragt**; Rechte kommen einmalig aus dem Profil/Auftrag. Ersetzt das heutige `-y` des Launchers, das pauschal alles freigibt | spezifiziert, nicht gebaut | M | `docs/sourdough-platform-connect/api-docs.md` §5 |
+| A1 | **Headless-Modus** (`--headless`): keine Dialoge, nicht freigegebene Werkzeuge werden **abgelehnt statt erfragt**; Rechte kommen einmalig aus dem Profil/Auftrag. Ersetzt das heutige `-y` des Launchers, das pauschal alles freigibt | spezifiziert, nicht gebaut | M | `docs/leaven-platform-connect/api-docs.md` §5 |
 | A2 | **Ereignis-Versand** an die Plattform: `sitzung.start`, `auftrag.start`, `plan.aktualisiert`, `schritt.ausgefuehrt`, `auftrag.ende`, `sitzung.ende` – eigener Weg neben `post_to_endpoint`, ohne Freigabe, kurzes Timeout, Fehler still | spezifiziert; heute gibt es nur die Board-Statusmeldung in `board.ts` | M | dito §2, §7 |
 | A3 | **Rückkanal** („Fragen"): CLI stellt eine Frage mit `frage_id`, pollt die Antwort (`weiter` / `stopp` / `warten`), Zeitüberschreitung → `stopp`; nur das Feld `antwort` wird gelesen, nie Rechte | spezifiziert, nicht gebaut | M–L | dito §3, §4 |
 | A4 | **Freigabe im Browser**: den Freigabe-Dialog als Frage-Typ über den Rückkanal abbilden, damit ein Mensch Werkzeugaufrufe aus der Web-UI heraus freigibt statt im Terminal | Idee, folgt aus A3 | M | [integration-compatibility.md](./integration-compatibility.md) |
@@ -27,9 +27,9 @@ Legende Umfang: **S** = Stunden · **M** = ein bis wenige Tage · **L** = eigene
 
 | # | Aufgabe | Stand | Umfang | Fundstelle |
 |---|---|---|---|---|
-| B1 | **Anthropic-Streaming (Phase 2)**: eigener Parser für `message_start` / `content_block_delta` / `thinking`-Deltas; Live-Reasoning und der Vertrag „vollständige Message oder Fehler" lassen sich aus `openaiStream.ts` übernehmen, der Parser nicht | offen; Opus/Fable laufen non-streaming mit 300 s Timeout | M | `docs/providers.md`, `docs/sourdough-cli/notes-for-next-assistant.md` §5 |
+| B1 | **Anthropic-Streaming (Phase 2)**: eigener Parser für `message_start` / `content_block_delta` / `thinking`-Deltas; Live-Reasoning und der Vertrag „vollständige Message oder Fehler" lassen sich aus `openaiStream.ts` übernehmen, der Parser nicht | offen; Opus/Fable laufen non-streaming mit 600 s Zeitlimit | M | `docs/providers.md`, `docs/leaven-cli/notes-for-next-assistant.md` §5 |
 | B2 | **Lokales Modell** (Ollama, llama.cpp, EU-gehostetes Qwen) als vierter Provider – der einzige Weg, bei dem Gelesenes den Rechner nicht verlässt. OpenAI-kompatible Endpunkte passen auf den DeepSeek-Pfad | offen | M | critical-issues Punkt 1 |
-| B3 | **Modell-IDs pflegen**: `claude-opus-5` steht in `ALLE_MODELLE`; frühere Notizen warnen davor, IDs zu raten. Vor Veröffentlichung live gegen die API prüfen und die Kurznamen (`opus`, `claude`) bewusst setzen | zu verifizieren | S | `src/providers/capabilities.ts` |
+| B3 | **Neuere Modell-IDs aufnehmen** (`claude-opus-5-5`, `claude-fable-5-1`): ein Upgrade mit Bruchstellen, kein Bugfix – Opus 5.5 lässt Thinking nicht mehr abschalten, Fable 5.1 verlangt einen nur angehängten Verlauf (das Kürzen der History bräche Thinking-Blöcke). Die heutigen IDs `claude-opus-5`, `claude-opus-4-8`, `claude-fable-5` sind gültig und werden bedient | geprüft 2026-11-02, Upgrade offen | M | `src/providers/capabilities.ts`, `src/history.ts` |
 | B4 | **Qwen `include_usage`** im Stream live bestätigen (Budgetzählung) | zu verifizieren | S | upcoming-tasks |
 | B5 | `stripReasoningOnSend` ist ein Sicherheitsventil ohne Nutzer; dokumentiert lassen oder entfernen | trivial | S | `capabilities.ts` |
 
@@ -38,8 +38,6 @@ Legende Umfang: **S** = Stunden · **M** = ein bis wenige Tage · **L** = eigene
 | # | Aufgabe | Stand | Umfang | Fundstelle |
 |---|---|---|---|---|
 | C1 | **git kontrolliert zurückholen** – fünf Bausteine, die zusammengehören: Härtungsflags (`--no-pager`, `--no-ext-diff`, `--no-textconv`) von der CLI injiziert, Umgebung (`GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_GLOBAL=/dev/null` …), Unterbefehl-Filter, Remote-Allowlist (Konfig **und** Argumente), Prüfung der `.git/config` auf `diff.external`, `core.pager`, `core.fsmonitor`, `credential.helper` … Nutzerwunsch: vorher besprechen, nicht eigenmächtig | geplant | L | `docs/security-projects/git-security-feature.md` |
-| C2 | **`--option=/pfad` aufspalten** und den Wert gegen den Bereich prüfen (`grep --file=…`) | offen, klein, lohnt sich | S | critical-issues Punkt 3 |
-| C3 | **Linux-Härtung**: GNU grep `-R`/`--dereference-recursive` in `forbidFlags` aufnehmen; Allowlist auf GNU-Varianten durchsehen | offen | S | [techstack.md](./techstack.md) §7 |
 | C4 | **Audit-Protokoll** `~/.leaven/audit.log`: Zeitstempel, Werkzeug, Argumente, Ergebnis, Freigabe-Entscheidung – auch Grundlage für A2 | offen | S | critical-issues Punkt 9 |
 | C5 | **Prompt-Injection mildern**: abgerufene Inhalte als Daten kennzeichnen (eigener Block mit Hinweis), Schreibzugriffe in der Iteration **nach** einem `fetch_url` grundsätzlich mit Rückfrage | offen | S–M | critical-issues 8b |
 | C6 | **DNS-Pinning** für `fetch_url`: selbst auflösen, IP gegen die Sperrliste prüfen, Verbindung an diese IP binden (`lookup`-Option) | offen | S | critical-issues 8d |
@@ -50,6 +48,8 @@ Legende Umfang: **S** = Stunden · **M** = ein bis wenige Tage · **L** = eigene
 | C11 | **Ressourcengrenzen** für Kindprozesse (CPU, Speicher, Netz) – auf macOS umständlich; realistisch nur per Container/Sandbox | offen | L | critical-issues Punkt 10 |
 | C12 | **Tippbestätigung** statt Enter bei destruktiven Befehlen (`rm -rf`, `git reset --hard`) gegen Dialog-Ermüdung | Idee | S | critical-issues Punkt 6 |
 
+C2 (Pfade in Optionswerten) und C3 (GNU-Sperren, Flag-Bündel und -Abkürzungen) sind erledigt – Stand in [full-documentation.md](./full-documentation.md) §4.6.
+
 ## D. Bedienung und Robustheit
 
 | # | Aufgabe | Stand | Umfang | Fundstelle |
@@ -58,7 +58,7 @@ Legende Umfang: **S** = Stunden · **M** = ein bis wenige Tage · **L** = eigene
 | D2 | **Mehrere Sessions / pro Projekt** – „weiter" hat genau einen globalen Slot (`session.json`) | offen | S–M | upcoming-tasks |
 | D3 | **SIGINT-Handler**: Strg-C soll den laufenden Turn abbrechen und die History reparieren, statt die CLI zu beenden | offen | S | `docs/configuration.md` |
 | D4 | **Kontextverdichtung**: Die History wird ab 60 Nachrichten hart beschnitten, Werkzeugergebnisse bei 8 000 Zeichen – eine Zusammenfassung älterer Teile fehlt | offen | M | `src/history.ts` |
-| D5 | **Schrittgrenze wiederherstellen**: `MAX_ITERATIONS` steht auf 99 999; der dokumentierte Haltepunkt „Weitere n Schritte?" ist damit außer Kraft. Entscheiden: bewusst so lassen (dann Doku anpassen) oder einen sinnvollen Wert konfigurierbar machen | Code ≠ Doku | S | `src/index.ts`, `docs/architecture.md` |
+| D5 | **Schrittgrenze entscheiden**: `MAX_ITERATIONS` steht auf 99 999, der Haltepunkt „Weitere n Schritte?" ist damit außer Kraft (die Doku sagt das inzwischen so). Entscheiden: bewusst so lassen oder einen sinnvollen Wert konfigurierbar machen (`--max-steps`) | Entscheidung offen | S | `src/index.ts` |
 | D6 | **Kostenanzeige in Währung** zusätzlich zu Tokens; Verbrauch je Sitzung, nicht nur je Tag | offen | S | `src/usage.ts` |
 | D7 | **„Immer erlauben" im Dialog** als geführter Weg in die Registry (schreibt den Vorschlag, Mensch bestätigt im Terminal) | Idee | S | `confirmToolCalls` |
 | D8 | **Diff-Vorschau** vor `edit_file`/`write_file` und ein Rückgängig | offen | M | – |
@@ -67,11 +67,10 @@ Legende Umfang: **S** = Stunden · **M** = ein bis wenige Tage · **L** = eigene
 
 ## E. Code-Hygiene, Doku, Verteilung
 
+E1 (Repository), E2 (Links nach der Umbenennung) und E3 (driftende Zahlen in den lebenden Dokumenten) sind erledigt; die datierten Handover-Dateien bleiben bewusst Momentaufnahmen.
+
 | # | Aufgabe | Stand | Umfang | Fundstelle |
 |---|---|---|---|---|
-| E1 | **Git-Repository und Veröffentlichung** – bis heute keine Versionsgeschichte | wird mit dieser Dokumentation erledigt (GitHub `JoshuaKucharski/leaven-code`) | S | – |
-| E2 | **Kaputte Links nach der Umbenennung**: Inhalte wurden von `sourdough` auf `leaven` umgeschrieben, Dateinamen nicht. Rund 60 relative Links in `docs/` zeigen auf `leaven-cli-*`, `leaven-api-endpoint-usage.md`, `leaven-platform-connect/`, `leaven-platform/`, `../leaven-cli/` – die Dateien heißen `sourdough-*`. Entweder Dateien umbenennen oder Links korrigieren | offen | S | `docs/README.md`, `docs/readme_handover.md`, `docs/tools.md`, … |
-| E3 | **Zahlen in der Doku driften**: Schrittgrenze (40 vs. 99 999), Backstop (200/500 vs. 9 999), Testzahlen (119/153 vs. 264), `src/index.ts`-Zeilen. Im Zweifel gilt der Code; eine Durchsicht lohnt | offen | S | `docs/architecture.md`, `docs/configuration.md`, `docs/troubleshooting.md` |
 | E4 | **Tote Dateien**: `src/index.ts.backup`, leeres `index.ts` im Wurzelverzeichnis, leere Ordner `skills/` und `src/include_functions/`, `.DS_Store`-Dateien | offen | S | – |
 | E5 | **`ora` aus `package.json` entfernen** (ungenutzt) | offen | S | `package.json` |
 | E6 | **`mode` in `config/loopBreaker.json`** auswerten oder entfernen | trivial | S | `src/index.ts` |
@@ -84,7 +83,7 @@ Legende Umfang: **S** = Stunden · **M** = ein bis wenige Tage · **L** = eigene
 | # | Aufgabe | Stand | Umfang |
 |---|---|---|---|
 | F1 | **End-to-End-Tests mit gemocktem HTTP** (Agent-Schleife, Freigabe, `securePath` im Echtlauf) statt nur reiner Funktionen – heute sind diese Prüfungen manuell und kostenpflichtig | offen | M |
-| F2 | **Linux-CI** (GitHub Actions): Build, Typecheck, alle Suiten; deckt C3 mit ab | offen, nach E1 naheliegend | S |
+| F2 | **Linux-CI** (GitHub Actions): Build, Typecheck, alle Suiten – der erste echte Linux-Lauf; prüft die GNU-Sperren (`grep -R`, `find -fprint0`) auf einem echten System | offen, naheliegend | S |
 | F3 | Tests für A1–A3: Zeitüberschreitung führt zu `stopp`; Antwort ohne passende `frage_id` wird verworfen; ein `rechte`-Feld in einer Antwort erhöht nichts | offen, in der Spezifikation benannt | S |
 
 ---
@@ -95,8 +94,8 @@ Die allererste Nutzeraufgabe (Footer, Brand-Titel und `.env`-Anpassungen in `~/d
 
 ## Empfohlene Reihenfolge
 
-1. E1, E2, E3, C9 – Repository, Links, Zahlen, Warnzeile (ein Nachmittag, macht alles Weitere nachvollziehbar).
-2. A5, A6, D1, C2, C3 – kleine Lücken mit sofortigem Nutzen für Launcher und Alltag.
+1. C9, A5, A6, D1 – Warnzeile unter `--yes`, Session-Pings, Modell-Kommando, Session sichern (kleine Lücken mit sofortigem Nutzen für Launcher und Alltag).
+2. F2 – Linux-CI, damit Build und GNU-Sperren auf einem zweiten System laufen.
 3. A1 + A2 + C4 – Headless-Modus, Ereignisse, Audit: die Grundlage jeder Pipeline.
 4. A3 + A4 – Rückkanal und Freigabe im Browser: ab hier ist leavencode aus einer Web-UI steuerbar.
 5. B1, B2 – Streaming für Anthropic, lokales Modell.

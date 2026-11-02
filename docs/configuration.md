@@ -115,6 +115,8 @@ Einstellungen und Bereiche bleiben dabei erhalten.
 mit HTTP 400 ab; bei aktivem Claude-Modell blendet die CLI den Befehl in `/help` aus und
 meldet beim Aufruf „nicht verfügbar – nutze `/effort`". Die Denktiefe wird bei Claude über
 `/effort` gesteuert (Stufen `low, medium, high, xhigh, max`); bei Fable ist Thinking immer an.
+Ist Thinking aus, sendet der Adapter höchstens `high` – die API nimmt `disabled` nur bis
+`high` an (Opus 5 antwortet sonst mit HTTP 400).
 
 Bei DeepSeek gilt weiter: Die API nimmt `temperature` auch bei aktivem Thinking an, ohne
 Fehler; ob der Wert dort wirkt, ist nicht zugesichert.
@@ -211,8 +213,8 @@ Steuert die Befehlsfreigabe und die Geheimnis-Erkennung.
 ```jsonc
 {
   "allowed": {
-    "grep": { "forbidFlags": ["-S", "--devices", "-Z", "--null"] },
-    "find": { "forbidFlags": ["-exec", "-delete", "-L", …] },
+    "grep": { "forbidFlags": ["-S", "-R", "--dereference-recursive", "--devices", "-Z", "--null"] },
+    "find": { "forbidFlags": ["-exec", "-delete", "-L", "-fprint0", …] },
     …
   },
   "secretPatterns":    [".env", "*.pem", "id_rsa*", …],
@@ -225,7 +227,10 @@ Rollen lesen kann. Zwei lesende Ausnahmen — das eigene Rollenverzeichnis und R
 `rollenzugriff` — sind in [roles.md](./roles.md) beschrieben.
 
 - `forbidFlags` — Optionen, die für dieses Programm gesperrt sind. Greifen **nur** bei
-  Programmen, die auf der Allowlist stehen.
+  Programmen, die auf der Allowlist stehen. Eine Sperre greift exakt, mit Wert
+  (`--follow=name`), gebündelt (`-rS` enthält `-S`) und als GNU-Abkürzung (`--deref`).
+  Pfade in Optionswerten (`--file=/pfad`, `-f/pfad`) prüft `execute_command` zusätzlich
+  gegen den Bereich.
 - `allowSubcommands` — optional; erstes Nicht-Options-Argument muss enthalten sein.
   Derzeit von keinem Eintrag genutzt (war für `git` gedacht).
 
@@ -243,7 +248,7 @@ nicht darauf — siehe
   "cycle_reps": 4,                // Wiederholungen eines Musters
   "cycle_max_period": 6,          // maximale Musterlänge
   "read_only_cycle_exempt": true, // reine Lesezyklen nicht blocken
-  "max_tool_calls": 200,          // Budget-Backstop pro Sitzung
+  "max_tool_calls": 9999,         // Budget-Backstop pro Sitzung
   "max_estimated_tokens": 0,      // 0 = aus
   "ignore_tools": ["list_files"]
 }
@@ -256,7 +261,7 @@ statt den Turn abzubrechen. So kann das Modell seinen Ansatz korrigieren.
 
 ### Budget-Backstop zur Laufzeit schalten (`/backstop`)
 
-`max_tool_calls` ist der **Startwert** aus `config/loopBreaker.json` (Vorgabe 200; `0` = aus).
+`max_tool_calls` ist der **Startwert** aus `config/loopBreaker.json` (Vorgabe 9999; `0` = aus).
 Er lässt sich pro Sitzung ohne Neustart umschalten:
 
 ```
@@ -276,7 +281,7 @@ aktuellen Zustand.
 ```bash
 npm run typecheck    # tsc --noEmit
 npm run build        # tsc -> dist/
-npm test             # Build + 75 Guard- + 13 Logik- + 31 URL-Prüfungen
+npm test             # Build + 177 Guard- + 13 Logik- + 31 URL-Prüfungen
 ```
 
 `npm test` läuft ohne API-Zugriff und kostet nichts. Einzelheiten in

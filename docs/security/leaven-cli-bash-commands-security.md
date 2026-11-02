@@ -148,17 +148,26 @@ als ihr Name vermuten lässt:
 
 | Programm | Gesperrte Option | Warum |
 |---|---|---|
-| `find` | `-exec`, `-execdir`, `-ok`, `-delete` | startet Programme bzw. löscht Dateien |
+| `find` | `-exec`, `-execdir`, `-ok`, `-okdir`, `-delete` | startet Programme bzw. löscht Dateien |
+| `find` | `-fls`, `-fprint`, `-fprint0`, `-fprintf` | schreibt Dateien (GNU find) |
 | `find` | `-L`, `-follow` | folgt Symlinks aus dem erlaubten Bereich hinaus |
-| `grep` | `-S` | folgt bei Rekursion allen Symlinks (Default auf macOS ist `-p`, folgt keinen) |
-| `grep` | `--devices` | liest Gerätedateien |
-| `rg` | `--follow`, `-L`, `--pre` | Symlinks bzw. Vorverarbeitung durch fremdes Programm |
-| `tail` | `-f`, `--follow` | blockiert bis zum Timeout |
+| `grep` | `-S` | folgt bei Rekursion allen Symlinks (BSD/macOS; Default ist `-p`, folgt keinen) |
+| `grep` | `-R`, `--dereference-recursive` | GNU grep folgt damit allen Symlinks (BSD behandelt `-R` wie `-r`); `-r` bleibt frei |
+| `grep` | `--devices`, `-Z`, `--null` | Gerätedateien, Entpacken wie `zgrep` (`-Z`, BSD), NUL-getrennte Ausgabe |
+| `rg` | `--follow`, `-L`, `--pre`, `--hostname-bin` | Symlinks bzw. Vorverarbeitung durch fremde Programme |
+| `tail` | `-f`, `-F`, `--follow` | blockiert bis zum Timeout |
+| `file` | `-C`, `--compile` | schreibt `magic.mgc` |
 | `git` | `-c` | `git -c core.pager=sh log` führt beliebigen Code aus |
 | `git` | `--exec-path`, `--upload-pack`, `--receive-pack` | leitet auf fremde Programme um |
 
 Ebenfalls abgefangen: ein Programm mit Pfadangabe (`/bin/rm`, `./script.sh`) umgeht die
 Namensprüfung und landet deshalb im Freigabe-Dialog.
+
+Der Abgleich kennt alle Schreibweisen, die getopt akzeptiert: exakt (`-S`), mit Wert
+(`--follow=name`), gebündelt (`-rSn` enthält `-S`) und als GNU-Abkürzung (`--deref` für
+`--dereference-recursive`). Ohne die letzten beiden liesse sich jede Sperre umgehen.
+Falschtreffer wie `-eS` (Muster „S") sind hingenommen – das Modell schreibt die Option
+dann getrennt.
 
 ---
 
@@ -170,6 +179,13 @@ Ein erlaubtes Programm kann trotzdem an falscher Stelle lesen. `grep -r password
 Jedes Argument, das **keine Option** ist (also nicht mit `-` beginnt), läuft durch
 dieselbe `securePath()`-Prüfung wie die Datei-Tools: Auflösung gegen den Lesebereich,
 Symlink-Auflösung per `fs.realpath`, Vergleich mit der Bereichsgrenze.
+
+Optionen mit eingebettetem Pfad werden ebenfalls geprüft (`eingebetteteWerte()`): der Wert
+hinter `=` immer (`--file=/pfad`; auch harmlose wie `--color=auto`, die sich im Lesebereich
+auflösen), bei Kurzoptionen mit `/` der Teil ab dem ersten `/` **und** der Teil nach dem
+Optionsbuchstaben – `-rf/x` prüft `/x` und `f/x`, weil nicht bekannt ist, welcher Buchstabe
+den Wert trägt. Ein relativ angehängter Wert wie `-fsrc/x` wird dadurch zu streng abgelehnt;
+`-f src/x` geht durch.
 
 Die Regel ist bewusst grosszügig. Eine engere Fassung („nur Argumente mit `/` darin")
 übersah `..` und `.` — `rm -rf ..` wäre ungeprüft durchgelaufen. Ein Suchbegriff wie
@@ -301,7 +317,7 @@ Aufrufe erzeugt. Blockierte Aufrufe bleiben auch im stillen Modus sichtbar.
 
 ## 10. Testabdeckung
 
-`scratchpad/test-guard.js` — 61 Prüfungen, alle grün:
+`tests/test-guard.js` — 177 Prüfungen, alle grün, darunter:
 
 - 10 Injektionsversuche (`;`, `&&`, `|`, `>`, `<`, `$( )`, Backtick, `${}`, `&`, Zeilenumbruch)
 - 7 harmlose Befehle, die durchgehen müssen

@@ -98,7 +98,7 @@ leavencode/
 ├── example-auto-stopp-auto-continute.md   Dummy-Ausgabe eines Testlaufs (Auto-Stopp/Fortsetzen)
 │
 ├── src/                         Quelltext (Zeilen am 2026-11-02)
-│   ├── index.ts           2959  Einstieg: Flags, Startdialog, Agent-Schleife, Werkzeuge, securePath,
+│   ├── index.ts           2966  Einstieg: Flags, Startdialog, Agent-Schleife, Werkzeuge, securePath,
 │   │                            Slash-Befehle, Rechte, Rollen, Persistenz, Launcher-Modus
 │   ├── index.ts.backup     240  alte Fassung mit Shell-`exec` – wird nicht gebaut, reine Historie
 │   ├── board.ts            130  Selbst-Meldung an das Leaven-Board (in_progress / Fortschritt / done)
@@ -108,13 +108,13 @@ leavencode/
 │   ├── state.ts             10  gemeinsamer Zustand (der Arbeitsplan)
 │   ├── usage.ts             52  Tages-Token-Budget – reine, getestete Logik
 │   ├── guards/
-│   │   ├── commandGuard.ts 375  Befehlszerlegung ohne Shell, Allowlist, Verdicts, Geheimnis-Erkennung,
-│   │   │                        Registry-Abgleich, sed-Lesebereich, Umgebungssäuberung
+│   │   ├── commandGuard.ts 425  Befehlszerlegung ohne Shell, Allowlist, Flag-Abgleich (auch gebündelt und
+│   │   │                        abgekürzt), Verdicts, Optionswerte, Geheimnisse, Registry, sed-Lesebereich
 │   │   ├── loopBreaker.ts  180  Wiederholungs-, Retry-Sturm- und Zyklus-Erkennung, Tool-Call-Backstop
 │   │   └── urlGuard.ts      96  Domain-Allowlist, SSRF-Sperre, HTML→Text
 │   ├── providers/
 │   │   ├── capabilities.ts  90  Provider-Erkennung, Fähigkeiten je Modell, Modellliste, Kurznamen
-│   │   ├── anthropic.ts    161  Adapter für die Anthropic Messages-API (non-streaming)
+│   │   ├── anthropic.ts    178  Adapter für die Anthropic Messages-API (non-streaming)
 │   │   ├── openaiStream.ts 272  gemeinsamer SSE-Client für OpenAI-kompatible Provider (DeepSeek, Qwen)
 │   │   └── qwen.ts          36  DashScope-Aufruf über den SSE-Client
 │   ├── util/pfade.ts        52  expandHome, realpathSoFar (Symlinks), isDirectory, subdirectories
@@ -124,7 +124,7 @@ leavencode/
 │
 ├── dist/                        Kompilat (tsc), spiegelt src/ – der tatsächliche Laufcode
 ├── config/
-│   ├── commands.json        59  Allowlist lesender Programme, forbidFlags, redirects, phpLint,
+│   ├── commands.json        60  Allowlist lesender Programme, forbidFlags, redirects, phpLint,
 │   │                            secretPatterns, secretDirectories, apiEndpoint
 │   └── loopBreaker.json     12  Schwellen des Loop-Breakers
 ├── tests/                       7 reine Node-Skripte (kein Test-Framework), laufen gegen dist/, kein API-Zugriff
@@ -169,7 +169,7 @@ leavencode ist ausschließlich **HTTP-Client**. In `src/` gibt es keinen `create
 | Provider | Endpunkt | Auth | Format | Streaming |
 |---|---|---|---|---|
 | DeepSeek (Standard) | `https://api.deepseek.com/v1/chat/completions` | `Authorization: Bearer` | OpenAI-kompatibel, `thinking:{type}` + `reasoning_effort` | ja (SSE, `stream_options.include_usage`) |
-| Anthropic | `https://api.anthropic.com/v1/messages` | `x-api-key` + `anthropic-version: 2023-06-01` | eigenes Format (Adapter: `system`-Feld, `input_schema`, `tool_use`/`tool_result`, `thinking`-Blöcke, `output_config.effort`) | nein (Phase 2); Timeout 300 s |
+| Anthropic | `https://api.anthropic.com/v1/messages` | `x-api-key` + `anthropic-version: 2023-06-01` | eigenes Format (Adapter: `system`-Feld, `input_schema`, `tool_use`/`tool_result`, `thinking`-Blöcke, `output_config.effort`) | nein (Phase 2); Zeitlimit 600 s, `max_tokens` 16000 |
 | Qwen | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions` | `Authorization: Bearer` | OpenAI-kompatibel, `enable_thinking` | ja |
 
 Retry-Politik überall: 3 Versuche bei 429/5xx/Verbindungsabriss mit exponentieller Wartezeit; beim Streaming nur, solange noch nichts live ausgegeben wurde.
@@ -240,10 +240,10 @@ Entwicklungs- und Betriebsumgebung ist ein MacBook mit Apple Silicon (Darwin 25.
 
 ### Linux – lauffähig, aber ungetestet
 
-Der CLI-Code enthält **keine** macOS-spezifische API: Pfade über `path`, Home über `os.homedir()`, Prozesse über `execFile`, kein `osascript`. Er sollte unter Linux unverändert bauen und laufen. Drei Punkte sind dort zu prüfen, bevor man sich auf die Schutzschichten verlässt:
+Der CLI-Code enthält **keine** macOS-spezifische API: Pfade über `path`, Home über `os.homedir()`, Prozesse über `execFile`, kein `osascript`. Er sollte unter Linux unverändert bauen und laufen. Die Allowlist ist für BSD- **und** GNU-Varianten der Werkzeuge ausgelegt; ein Lauf auf einem echten Linux steht noch aus (Linux-CI: [open-work.md](./open-work.md), F2). Drei Punkte zum Nachvollziehen:
 
-1. **GNU grep vs. BSD grep.** Die gesperrte Option `grep -S` (Symlinks folgen) ist ein BSD/macOS-Flag. GNU grep folgt Symlinks mit `-R` (groß) – dieses Flag steht **nicht** in `forbidFlags`. Für Linux gehört `-R` und `--dereference-recursive` ergänzt, sonst kann ein erlaubtes `grep -R` über einen Symlink aus dem Lesebereich hinauslesen.
-2. **GNU find** kennt `-L` und `-follow` ebenfalls; beide sind gesperrt. `-delete`, `-exec`, `-execdir`, `-ok`, `-okdir`, `-fls`, `-fprint`, `-fprintf` ebenso.
+1. **GNU grep vs. BSD grep.** `grep -S` (BSD: Symlinks folgen) und `grep -R`/`--dereference-recursive` (GNU: folgt allen Symlinks; BSD behandelt `-R` wie `-r`) sind gesperrt, `-r` bleibt frei. Der Abgleich erkennt eine Sperre auch gebündelt (`-rSn`) und als GNU-Abkürzung (`--deref`).
+2. **GNU find** kennt `-L` und `-follow` ebenfalls; beide sind gesperrt. `-delete`, `-exec`, `-execdir`, `-ok`, `-okdir`, `-fls`, `-fprint`, `-fprint0`, `-fprintf` ebenso. Dazu `tail -F` (folgt wie `-f`) und `file -C` (schreibt `magic.mgc`).
 3. **sed** ist unkritisch: Die einzige freigabefreie Form (`sed -n 'N,Mp' datei`) startet **kein** sed, sondern liest die Zeilen intern – GNU-/BSD-Unterschiede spielen keine Rolle.
 
 Der Terminal-Launcher der Plattform ist macOS-only; unter Linux gibt die Plattform den Startbefehl zum Kopieren aus (`MacTerminalLauncher` wirft eine entsprechende Meldung).
@@ -261,18 +261,18 @@ Die Allowlist besteht aus POSIX-Werkzeugen, der Freigabe-Dialog braucht einen TT
 
 ## 8. Tests und Qualitätssicherung
 
-Alle Suiten laufen gegen `dist/`, ohne Netz, ohne Kosten. Stand 2026-11-02 (gegen den vorhandenen Build ausgeführt):
+Alle Suiten laufen gegen `dist/`, ohne Netz, ohne Kosten. Stand 2026-11-02, frischer Build nach den Guard- und Adapter-Korrekturen:
 
 | Suite | Prüfungen | Prüft |
 |---|---|---|
-| `tests/test-guard.js` | 123 | Metazeichen-Ablehnung, Allowlist, gesperrte Optionen, `redirect`/`allow`/`sedread`-Verdicts, `php -l`, Registry-Abgleich, Geheimnis-Erkennung, Pfaderkennung, Umgebungssäuberung |
+| `tests/test-guard.js` | 177 | Metazeichen-Ablehnung, Allowlist, gesperrte Optionen (auch gebündelt, abgekürzt, GNU-Varianten), eingebettete Optionswerte, `redirect`/`allow`/`sedread`-Verdicts, `php -l`, Registry-Abgleich, Geheimnis-Erkennung, Pfaderkennung, Umgebungssäuberung |
 | `tests/test-logic.js` | 13 | Loop-Breaker (Fehlalarme, echte Schleifen, Zyklen, Argumentreihenfolge), DSML-Parser |
 | `tests/test-url.js` | 31 | Domain-Allowlist, Suffix-Tricks, SSRF-Sperre, Protokolle, HTML→Text |
-| `tests/test-anthropic.js` | 36 | Fähigkeiten aller Modelle, Request-/Response-Übersetzung, Fable-Sonderfälle |
+| `tests/test-anthropic.js` | 44 | Fähigkeiten aller Modelle, Request-/Response-Übersetzung, Denktiefe ohne Thinking, `max_tokens`/`finishReason`, Fable-Sonderfälle |
 | `tests/test-stream.js` | 36 | SSE-Zeilenpuffer, Tool-Call-Assembler, UTF-8 über Chunk-Grenzen, `reasoning_content`-Phantom |
 | `tests/test-usage.js` | 17 | Token-Summe, Tagesreset, Budgetprüfung |
 | `tests/test-session.js` | 8 | Session-Validierung |
-| **Summe** | **264** | alle bestanden; `npm run typecheck` fehlerfrei |
+| **Summe** | **326** | alle bestanden; `npm run typecheck` fehlerfrei |
 
 Es gibt **kein** Test-Framework (keine Jest-/Vitest-Abhängigkeit): Jede Suite ist ein Skript mit einer `check()`-Funktion, zählt `bestanden/fehlgeschlagen` und setzt den Exit-Code. Live-Prüfungen gegen die echten APIs (Agent-Schleife, `securePath` im Echtlauf, Streaming) sind manuell und in `docs/testing.md` als Prüfliste beschrieben.
 

@@ -110,21 +110,22 @@ Die Schrittgrenze war mit 25 zu knapp. **Gemessen:** Eine Landingpage aus sechs 
 braucht mit Planpflege bereits 17 Schritte — jeder `update_plan`-Aufruf ist eine eigene
 Iteration. Mit Fehlversuchen und Dialogen ist 25 schnell erreicht.
 
-*Schutz:* Grenze auf 40 erhöht, und wichtiger: Sie **beendet den Vorgang nicht mehr**.
-Bei Erreichen erscheint der Bericht, der Plan und die Frage
-`Weitere 40 Schritte ausführen? [Y/n]`. Damit ist sie ein Haltepunkt statt einer Wand.
+*Schutz:* Die Grenze **beendet den Vorgang nicht mehr**: Bei Erreichen erscheint der
+Bericht, der Plan und die Frage `Weitere n Schritte ausführen? [Y/n]`. Heute steht
+`MAX_ITERATIONS` auf 99 999 – der Haltepunkt greift praktisch nie; gegen Entgleisen wirken
+Loop-Breaker, Tool-Call-Backstop und Tagesbudget. Ob ein kleinerer, konfigurierbarer Wert
+zurückkommt, ist offen (`leavencode-documentation/open-work.md`, D5).
 
 Ohne TTY wird gestoppt, aber mit dem Hinweis, dass eine Folgeeingabe fortsetzt.
 
 *Falls es doch abbricht:* Der Verlauf bleibt in jedem Fall erhalten. Eine Eingabe wie
 „mach weiter" setzt die Arbeit mit vollem Kontext fort — verifiziert.
 
-*Warum nicht einfach 150:* Die Grenze ist ein Notaus gegen Endlosschleifen. Bei 150 mit
-`deepseek-v4-pro` und Thinking läuft ein entgleister Vorgang lange und teuer, bevor jemand
-eingreift. Die Nachfrage alle 40 Schritte erreicht dasselbe, ohne die Kontrolle abzugeben.
+*Abwägung:* Eine kleine Grenze ist ein Notaus gegen Endlosschleifen, kostet aber bei langen
+Aufträgen Rückfragen. Der heutige Wert setzt ganz auf Loop-Breaker und Backstop.
 
 **Zweite Grenze beachten:** `max_tool_calls` in `config/loopBreaker.json` ist ein Budget
-für die **gesamte Sitzung**, nicht pro Auftrag. Es stand auf 200 und wurde auf 500 erhöht.
+für die **gesamte Sitzung**, nicht pro Auftrag. Es steht auf 9 999.
 Wird es erreicht, sieht die Meldung wie eine Schleifenerkennung aus, obwohl nur das Budget
 alle ist. Zur Laufzeit lässt es sich mit `/backstop off` abschalten oder mit
 `/backstop 500` neu setzen (`/backstop` zeigt Stand und Verbrauch).

@@ -73,7 +73,7 @@ diesseits.
 Die Zusicherung aus den Abschnitten 1–3 ist nur so gut wie zwei Dinge:
 
 1. **Der CLI-Code selbst** — die Prüfungen müssen korrekt sein. Deshalb gibt es dafür Tests
-   (`npm test`, 119 Prüfungen).
+   (`npm test`, 221 Prüfungen).
 2. **Die Abhängigkeiten** — npm-Pakete laufen mit deinen Rechten. Das ist derselbe
    Vertrauensakt wie bei jedem Programm, das du startest.
 

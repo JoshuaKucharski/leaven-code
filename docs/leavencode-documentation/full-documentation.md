@@ -170,8 +170,8 @@ Pro Auftrag läuft die Schleife aus Abschnitt 2. Wichtige Eigenschaften:
 
 Weitere Regeln:
 
-- **Gesperrte Optionen** je Allowlist-Programm: `find -exec/-execdir/-ok/-okdir/-delete/-L/-follow/-fls/-fprint/-fprintf`, `grep -S/--devices/-Z/--null`, `rg --follow/-L/--pre/--hostname-bin`, `tail -f/--follow`.
-- **Pfad-Argumente** (alles, was nicht mit `-` beginnt) laufen durch `securePath`: bei Allowlist-/Lint-Befehlen gegen den **Lese**bereich, bei allen anderen gegen den **Schreib**bereich – sonst käme `rm -rf src/` durch, solange `src/` im Lesebereich liegt. Vorregistrierte Befehle überspringen die Argumentprüfung (der Mensch hat die exakte Zeile vermerkt).
+- **Gesperrte Optionen** je Allowlist-Programm: `find -exec/-execdir/-ok/-okdir/-delete/-L/-follow/-fls/-fprint/-fprint0/-fprintf`, `grep -S/-R/--dereference-recursive/--devices/-Z/--null`, `rg --follow/-L/--pre/--hostname-bin`, `tail -f/-F/--follow`, `file -C/--compile`. Eine Sperre greift exakt, mit Wert (`--follow=name`), **gebündelt** (`-rS` enthält `-S`) und als **GNU-Abkürzung** (`--deref`) – getopt akzeptiert alle vier Schreibweisen, also muss der Guard sie alle kennen. Falschtreffer wie `-eS` (Muster „S") sind hingenommen; das Modell schreibt die Option dann getrennt.
+- **Pfad-Argumente** (alles, was nicht mit `-` beginnt) laufen durch `securePath`: bei Allowlist-/Lint-Befehlen gegen den **Lese**bereich, bei allen anderen gegen den **Schreib**bereich – sonst käme `rm -rf src/` durch, solange `src/` im Lesebereich liegt. **Optionswerte** zählen mit (`eingebetteteWerte`): der Wert hinter `=` immer (`--file=/pfad`; auch `--color=auto`, das sich harmlos im Lesebereich auflöst), bei Kurzoptionen mit `/` der Teil ab dem ersten `/` und der Teil nach dem Optionsbuchstaben (`-rf/x` → `/x` und `f/x`, beide müssen im Bereich liegen; `-fsrc/x` wird deshalb zu streng abgelehnt – getrennt schreiben). Vorregistrierte Befehle überspringen die Argumentprüfung (der Mensch hat die exakte Zeile vermerkt).
 - **Arbeitsverzeichnis** der Kindprozesse ist immer der Lesebereich – derselbe Bezugspunkt wie bei Prüfung und Datei-Werkzeugen.
 - **Umgebung** wird gesäubert (`scrubEnvironment`): alles auf `_KEY`, `_TOKEN`, `_SECRET`, `_PASSWORD`, `_PASSWD`, `_CREDENTIALS`, `API_KEY` sowie `DEEPSEEK_API_KEY`, `AWS_*`, `GITHUB_TOKEN`, `OPENAI_*` erreicht den Kindprozess nicht.
 - **Warum `git` nicht auf der Allowlist steht:** Die repo-eigene `.git/config` kann über `diff.external`, `core.pager`, `textconv`-Filter beliebige Programme starten – ohne Netz, ohne verdächtige Kommandozeile. Ein Plan, git kontrolliert zurückzuholen, steht in `docs/security-projects/git-security-feature.md`.
@@ -194,7 +194,7 @@ Weitere Regeln:
 
 Kurznamen für `/model`: `deepseek` → `deepseek-v4-pro`, `opus` und `claude` → `claude-opus-5`, `fable` → `claude-fable-5`, `qwen` → `qwen3.7-max`. Ein neues Modell wird an genau drei Stellen in `capabilities.ts` eingetragen (`ALLE_MODELLE`, `MODELL_ALIASE`, `capabilitiesFor`). Modell-IDs nicht raten – eine falsche ID ergibt HTTP 400.
 
-**Anthropic-Adapter** (`anthropic.ts`): übersetzt die interne OpenAI-förmige History an der API-Grenze (System-Nachrichten → `system`, `tool_calls` → `tool_use`, `role:"tool"` → gebündelte `tool_result`-Blöcke, `parameters` → `input_schema`), bevorzugt gespeicherte `_providerRaw`-Blöcke, setzt `output_config.effort`, bei Opus `thinking: adaptive|disabled`, bei Fable kein `thinking`-Feld, dafür `fallbacks: [claude-opus-4-8]` mit dem Beta-Header `server-side-fallback-2026-06-01`; `stop_reason: 'refusal'` wird als Meldung statt Absturz behandelt.
+**Anthropic-Adapter** (`anthropic.ts`): übersetzt die interne OpenAI-förmige History an der API-Grenze (System-Nachrichten → `system`, `tool_calls` → `tool_use`, `role:"tool"` → gebündelte `tool_result`-Blöcke, `parameters` → `input_schema`), bevorzugt gespeicherte `_providerRaw`-Blöcke, setzt `output_config.effort` (ohne Thinking höchstens `high`, weil die API `disabled` nur bis `high` annimmt – Opus 5 antwortet sonst mit HTTP 400), bei Opus `thinking: adaptive|disabled`, bei Fable kein `thinking`-Feld, dafür `fallbacks: [claude-opus-4-8]` mit dem Beta-Header `server-side-fallback-2026-06-01`; `max_tokens` 16000 (Thinking zählt mit), Zeitlimit 600 s; `stop_reason: 'refusal'` wird als Meldung statt Absturz behandelt, `max_tokens` löst dieselbe Längenwarnung aus wie bei DeepSeek/Qwen.
 
 **Streaming** (`openaiStream.ts`, DeepSeek + Qwen): eigener SSE-Parser mit Zeilenpuffer über Chunk-Grenzen, UTF-8-sicherem `StringDecoder`, Tool-Call-Assembler je Index, Idle-Watchdog (90 s) zusätzlich zum Verbindungs-Timeout (60 s). Oberster Vertrag: **vollständige Message oder Fehler – nie etwas dazwischen**; die Schleife pusht erst nach Erfolg in die History. Nur der Reasoning-Strom wird live (grau) angezeigt; `content` nie, weil der DSML-Fallback und die Formatierung den ganzen Text brauchen.
 
@@ -344,7 +344,7 @@ Fertig: restVerbrauch() ergänzt, Test grün.
 
 ## 7. Tests
 
-`npm test` baut und führt die Kern-Suite aus (Guard 123, Logik 13, URL 31); `npm run test:anthropic` (36), `test:stream` (36), `test:usage` (17), `test:session` (8) laufen separat. Alle ohne API-Zugriff. Was nur live prüfbar ist (Schleife, Streaming gegen die echte API, Freigabe-Dialog im TTY), steht als Prüfliste in `docs/testing.md`.
+`npm test` baut und führt die Kern-Suite aus (Guard 177, Logik 13, URL 31); `npm run test:anthropic` (44), `test:stream` (36), `test:usage` (17), `test:session` (8) laufen separat. Alle ohne API-Zugriff. Was nur live prüfbar ist (Schleife, Streaming gegen die echte API, Freigabe-Dialog im TTY), steht als Prüfliste in `docs/testing.md`.
 
 ---
 
@@ -369,11 +369,11 @@ Fertig: restVerbrauch() ergänzt, Test grün.
 | Werkzeuge und Pfadsemantik | `docs/tools.md` |
 | Bereiche und Rechte | `docs/permissions-and-scopes.md` |
 | Provider und Streaming | `docs/providers.md` |
-| Befehlssicherheit, Restrisiken, Registrierung | `docs/security/sourdough-cli-bash-commands-security.md`, `docs/security/sourdough-cli-critical-issues.md`, `docs/security/command-registration.md` |
-| Netz | `docs/internet.md`, `docs/sourdough-api-endpoint-usage.md` |
-| Plattform-Rückkanal (Entwurf) | `docs/sourdough-platform-connect/api-docs.md` |
+| Befehlssicherheit, Restrisiken, Registrierung | `docs/security/leaven-cli-bash-commands-security.md`, `docs/security/leaven-cli-critical-issues.md`, `docs/security/command-registration.md` |
+| Netz | `docs/internet.md`, `docs/leaven-api-endpoint-usage.md` |
+| Plattform-Rückkanal (Entwurf) | `docs/leaven-platform-connect/api-docs.md` |
 | Konfiguration, Tests, Fehlerbilder | `docs/configuration.md`, `docs/testing.md`, `docs/troubleshooting.md` |
-| Kompakte Referenz | `docs/sourdough-cli/*.md` |
+| Kompakte Referenz | `docs/leaven-cli/*.md` |
 | Übergaben | `docs/handover/*.md`, `docs/2026-07-21_2008_*.md` |
 
 Mehrere dieser Dateien verlinken sich gegenseitig noch unter den alten `leaven-*`-Namen und laufen deshalb ins Leere – siehe [open-work.md](./open-work.md).

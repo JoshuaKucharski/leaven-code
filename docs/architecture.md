@@ -24,9 +24,13 @@ config/
   commands.json            Allowlist, Geheimnis-Muster
   loopBreaker.json         Schwellwerte der Schleifenerkennung
 tests/
-  test-guard.js            75 Prüfungen zum Befehls-Guard
+  test-guard.js           177 Prüfungen zum Befehls-Guard
   test-logic.js            13 Prüfungen zu LoopBreaker und XML-Parser
   test-url.js              31 Prüfungen zu Domain-Allowlist und SSRF-Schutz
+  test-anthropic.js        44 Prüfungen zum Anthropic-Adapter (separat: npm run test:anthropic)
+  test-stream.js           36 Prüfungen zum SSE-Client (separat)
+  test-usage.js            17 Prüfungen zum Tagesbudget (separat)
+  test-session.js           8 Prüfungen zur „weiter"-Session (separat)
 ```
 
 `src/index.ts.backup` ist ein Überbleibsel eines früheren Stands und wird nicht gebaut.
@@ -38,7 +42,7 @@ Kern des Programms, `runAgentTurn()` in `src/index.ts`:
 ```
 messages.push({role:'user', content: eingabe})
 
-für iteration = 1 … MAX_ITERATIONS (25):
+für iteration = 1 … MAX_ITERATIONS (99 999, siehe unten):
     antwort = callApi(messages, mit_tools = true)
     messages.push(antwort)                        // rohes Objekt, siehe unten
 
@@ -74,7 +78,7 @@ Einzelheiten in [deepseek-api.md](./deepseek-api.md).
 
 | Mechanismus | Wert | Zweck |
 |---|---|---|
-| `MAX_ITERATIONS` | 40 | Schritte je Block. **Kein Abbruch** — bei Erreichen fragt die CLI, ob weitergearbeitet werden soll |
+| `MAX_ITERATIONS` | 99 999 | Schritte je Block; bei Erreichen fragt die CLI, ob weitergearbeitet werden soll — bei diesem Wert praktisch nie. Gegen Entgleisen wirken Loop-Breaker, Tool-Call-Backstop (`max_tool_calls`, 9 999) und Tagesbudget; ob ein kleinerer, konfigurierbarer Wert zurückkommt, ist offen (`leavencode-documentation/open-work.md`, D5) |
 | `MAX_TOOL_RESULT_CHARS` | 8000 | Werkzeugergebnisse kürzen, Kontext schonen |
 | `MAX_HISTORY_MESSAGES` | 60 | `trimHistory()` kürzt an einer user-Grenze, damit `tool_call`/`tool`-Paare heil bleiben |
 | `REQUEST_TIMEOUT_MS` | 120 000 | axios-Timeout |
