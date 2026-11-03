@@ -374,6 +374,7 @@ Fertig: restVerbrauch() ergänzt, Test grün.
 | Plattform-Rückkanal (Entwurf) | `docs/leaven-platform-connect/api-docs.md` |
 | Konfiguration, Tests, Fehlerbilder | `docs/configuration.md`, `docs/testing.md`, `docs/troubleshooting.md` |
 | Kompakte Referenz | `docs/leaven-cli/*.md` |
+| USP, Alternativen, Einordnung am Markt | [usp.md](./usp.md) |
 | Übergaben | `docs/handover/*.md`, `docs/2026-07-21_2008_*.md` |
 
 Mehrere dieser Dateien verlinken sich gegenseitig noch unter den alten `leaven-*`-Namen und laufen deshalb ins Leere – siehe [open-work.md](./open-work.md).

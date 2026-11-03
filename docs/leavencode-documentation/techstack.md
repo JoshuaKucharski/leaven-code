@@ -129,7 +129,7 @@ leavencode/
 │   └── loopBreaker.json     12  Schwellen des Loop-Breakers
 ├── tests/                       7 reine Node-Skripte (kein Test-Framework), laufen gegen dist/, kein API-Zugriff
 ├── docs/                        Fachdokumentation (Architektur, Sicherheit, Provider, Handover …)
-│   └── leavencode-documentation/   diese sechs Dateien
+│   └── leavencode-documentation/   diese sieben Dateien (inkl. usp.md)
 ├── loop-breaker/                eigenes Git-Repository (Upstream github.com/sakshya73/loop-breaker, v0.1.2, MIT):
 │                                das Claude-Code-Plugin „Loop Breaker" (Python-PreToolUse-Hook). Vorlage und
 │                                Namensgeber für src/guards/loopBreaker.ts; wird als Git-Submodul geführt
